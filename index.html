@@ -1,0 +1,2605 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🦊 圍棋大冒險 - 從棋小白到棋仙</title>
+<style>
+:root {
+  --bg-main: #fff8e7;
+  --bg-card: #ffffff;
+  --primary: #ff8a3d;
+  --primary-dark: #e66b1f;
+  --secondary: #4ecdc4;
+  --accent: #ffd93d;
+  --danger: #ff6b6b;
+  --success: #95e06c;
+  --text-main: #3d3a36;
+  --text-soft: #7a7570;
+  --board-bg: #e8b76d;
+  --board-line: #5a3a1a;
+  --shadow: 0 4px 16px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'PingFang TC', 'Microsoft JhengHei', 'Heiti TC', '微軟正黑體', sans-serif;
+  background: linear-gradient(135deg, #fff8e7 0%, #ffe8c4 100%);
+  color: var(--text-main);
+  min-height: 100vh;
+  line-height: 1.7;
+}
+#app { max-width: 1280px; margin: 0 auto; padding: 16px; }
+
+/* ============ 頂部狀態列 ============ */
+header.topbar {
+  background: white;
+  border-radius: 20px;
+  padding: 16px 24px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.logo { font-size: 28px; font-weight: 900; color: var(--primary); }
+.logo .fox { display: inline-block; animation: bounce 2s infinite; }
+@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+.stat-pill {
+  background: linear-gradient(135deg, #fff3d6, #ffe4a8);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+}
+.stat-pill.rank { background: linear-gradient(135deg, #d4f1f4, #a3e1e8); }
+.stat-pill.xp { background: linear-gradient(135deg, #ffd9e8, #ffb8d1); }
+.stat-pill.streak { background: linear-gradient(135deg, #ffe9c4, #ffc77a); }
+.xp-bar-wrap {
+  flex: 1;
+  min-width: 200px;
+  background: #f0e6d2;
+  border-radius: 999px;
+  height: 24px;
+  overflow: hidden;
+  position: relative;
+}
+.xp-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--primary));
+  width: 0%;
+  transition: width .6s cubic-bezier(.16,1,.3,1);
+  border-radius: 999px;
+}
+.xp-bar-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* ============ 主導覽 ============ */
+nav.modes {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.mode-btn {
+  background: white;
+  border: 3px solid transparent;
+  border-radius: 16px;
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mode-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.mode-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+}
+.mode-btn .icon { font-size: 22px; }
+
+/* ============ 內容區 ============ */
+.screen { display: none; animation: fadeIn .4s; }
+.screen.active { display: block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+.card {
+  background: white;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+
+/* ============ 章節地圖 ============ */
+.chapter-map { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.chapter-card {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: all .2s;
+  border: 3px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+.chapter-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.chapter-card.locked { opacity: .5; cursor: not-allowed; }
+.chapter-card.locked:hover { transform: none; }
+.chapter-card .ch-num {
+  font-size: 14px;
+  color: var(--text-soft);
+  font-weight: 700;
+}
+.chapter-card .ch-title { font-size: 22px; font-weight: 900; margin: 4px 0 8px; }
+.chapter-card .ch-rank { font-size: 14px; color: var(--primary); font-weight: 700; }
+.chapter-card .ch-desc { font-size: 14px; color: var(--text-soft); margin-top: 8px; }
+.chapter-card .ch-progress {
+  margin-top: 12px;
+  background: #f0e6d2;
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+.chapter-card .ch-progress-fill { height: 100%; background: var(--success); transition: width .6s; }
+.chapter-card .ch-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 28px;
+}
+
+/* ============ 課程內頁 ============ */
+.lesson-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.lesson-header h2 { font-size: 26px; color: var(--primary-dark); }
+.back-btn {
+  background: white;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.back-btn:hover { background: #f5f5f5; }
+
+.lesson-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) { .lesson-body { grid-template-columns: 1fr; } }
+
+.lesson-text { background: white; border-radius: 20px; padding: 24px; box-shadow: var(--shadow); }
+.lesson-text h3 { font-size: 20px; margin-bottom: 12px; color: var(--primary-dark); }
+.lesson-text p { margin-bottom: 12px; font-size: 16px; }
+.lesson-text .key-point {
+  background: linear-gradient(135deg, #fff3d6, #ffe4a8);
+  border-left: 5px solid var(--primary);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 12px 0;
+  font-weight: 700;
+}
+.lesson-text .tip {
+  background: linear-gradient(135deg, #d4f1f4, #a3e1e8);
+  border-left: 5px solid var(--secondary);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+.lesson-text .warn {
+  background: linear-gradient(135deg, #ffd9d9, #ffb3b3);
+  border-left: 5px solid var(--danger);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+.lesson-text ul, .lesson-text ol { margin-left: 20px; margin-bottom: 12px; }
+.lesson-text li { margin-bottom: 6px; }
+
+/* ============ 吉祥物對話 ============ */
+.fox-talk {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: linear-gradient(135deg, #fff8e7, #fff3d6);
+  border-radius: 16px;
+  padding: 16px;
+  margin: 12px 0;
+}
+.fox-avatar {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #ff8a3d, #ffb87a);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow);
+}
+.fox-bubble { background: white; padding: 12px 16px; border-radius: 16px; flex: 1; box-shadow: var(--shadow); }
+.fox-bubble:before { content: ""; }
+
+/* ============ 棋盤 ============ */
+.board-wrap {
+  background: white;
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.board-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.board-toolbar button, .board-toolbar select {
+  background: white;
+  border: 2px solid #e8e0d0;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 14px;
+}
+.board-toolbar button:hover { background: #fff3d6; }
+.board-toolbar button.primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  border-color: var(--primary-dark);
+}
+.board-toolbar .status {
+  margin-left: auto;
+  font-weight: 700;
+  background: #fff3d6;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+canvas.go-board {
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  cursor: crosshair;
+  border-radius: 12px;
+}
+
+.move-info {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 12px;
+  background: #fff8e7;
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.move-info .black-info { color: #222; }
+.move-info .white-info { color: var(--text-soft); }
+
+/* ============ 練習題 ============ */
+.problem-prompt {
+  background: linear-gradient(135deg, #d4f1f4, #a3e1e8);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  font-weight: 700;
+  font-size: 16px;
+}
+.problem-result {
+  border-radius: 16px;
+  padding: 16px;
+  margin-top: 12px;
+  font-weight: 700;
+  font-size: 16px;
+  display: none;
+}
+.problem-result.success {
+  background: linear-gradient(135deg, #d4f4d4, #95e06c);
+  display: block;
+}
+.problem-result.fail {
+  background: linear-gradient(135deg, #ffd9d9, #ffb3b3);
+  display: block;
+}
+
+/* ============ 浮動獎勵 ============ */
+.floater {
+  position: fixed;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(.5);
+  background: linear-gradient(135deg, var(--accent), var(--primary));
+  color: white;
+  padding: 24px 36px;
+  border-radius: 20px;
+  font-size: 28px;
+  font-weight: 900;
+  box-shadow: 0 16px 48px rgba(0,0,0,.3);
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  text-align: center;
+}
+.floater.show {
+  animation: pop 1.8s cubic-bezier(.16,1,.3,1) forwards;
+}
+@keyframes pop {
+  0% { opacity:0; transform: translate(-50%, -50%) scale(.3) rotate(-10deg); }
+  20% { opacity:1; transform: translate(-50%, -50%) scale(1.1) rotate(2deg); }
+  35% { transform: translate(-50%, -50%) scale(1) rotate(0); }
+  80% { opacity:1; }
+  100% { opacity:0; transform: translate(-50%, -50%) scale(.9) translateY(-40px); }
+}
+
+/* ============ XP 飄字 ============ */
+.xp-float {
+  position: fixed;
+  color: var(--primary);
+  font-weight: 900;
+  font-size: 20px;
+  pointer-events: none;
+  z-index: 9998;
+  text-shadow: 0 2px 4px rgba(0,0,0,.2);
+  animation: xpFloat 1.2s ease-out forwards;
+}
+@keyframes xpFloat {
+  0% { opacity:0; transform: translateY(0); }
+  20% { opacity:1; }
+  100% { opacity:0; transform: translateY(-60px); }
+}
+
+/* ============ 寶箱 ============ */
+.box-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.box-modal.show { display: flex; }
+.box-content {
+  background: white;
+  border-radius: 24px;
+  padding: 32px;
+  text-align: center;
+  max-width: 90%;
+  width: 400px;
+  box-shadow: var(--shadow-lg);
+}
+.box-emoji { font-size: 80px; animation: shake 1s infinite; cursor: pointer; }
+@keyframes shake {
+  0%,100% { transform: rotate(0); }
+  25% { transform: rotate(-10deg); }
+  75% { transform: rotate(10deg); }
+}
+.box-emoji.opened { animation: none; transform: scale(1.2); }
+.box-reward { font-size: 22px; font-weight: 900; margin: 16px 0; color: var(--primary-dark); }
+.box-btn {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 12px;
+}
+
+/* ============ 成就殿堂 ============ */
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+.badge {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  transition: all .2s;
+  border: 3px solid transparent;
+}
+.badge.unlocked {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, #fffce7, #fff3d6);
+}
+.badge.locked { opacity: .4; filter: grayscale(80%); }
+.badge .b-icon { font-size: 48px; margin-bottom: 8px; }
+.badge .b-name { font-weight: 900; font-size: 15px; margin-bottom: 4px; }
+.badge .b-desc { font-size: 12px; color: var(--text-soft); }
+
+/* ============ 練習題清單 ============ */
+.problem-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.problem-card {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: all .2s;
+  border: 3px solid transparent;
+}
+.problem-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.problem-card.solved { border-color: var(--success); background: linear-gradient(135deg, #f0fff0, #d4f4d4); }
+.problem-card .p-num { font-size: 12px; color: var(--text-soft); }
+.problem-card .p-title { font-size: 16px; font-weight: 700; margin-top: 4px; }
+.problem-card .p-tag {
+  display: inline-block;
+  background: #fff3d6;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  margin-top: 6px;
+}
+
+/* ============ 設定 ============ */
+.settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0e6d2; }
+.settings-row:last-child { border-bottom: none; }
+.toggle {
+  width: 50px;
+  height: 28px;
+  background: #ddd;
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background .2s;
+}
+.toggle.on { background: var(--success); }
+.toggle:before {
+  content: "";
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background: white;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: left .2s;
+}
+.toggle.on:before { left: 24px; }
+
+footer.bottom {
+  margin-top: 24px;
+  text-align: center;
+  color: var(--text-soft);
+  font-size: 13px;
+  padding: 16px;
+}
+
+/* 響應式 */
+@media (max-width: 600px) {
+  .logo { font-size: 22px; }
+  .stat-pill { font-size: 13px; padding: 6px 12px; }
+  .mode-btn { padding: 10px 14px; font-size: 14px; }
+  .lesson-text { padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- 浮動元素 -->
+<div id="floater" class="floater"></div>
+<div id="boxModal" class="box-modal">
+  <div class="box-content">
+    <div id="boxEmoji" class="box-emoji" onclick="openBox()">🎁</div>
+    <div id="boxReward" class="box-reward">點一下寶箱看看裡面有什麼！</div>
+    <button class="box-btn" onclick="closeBox()">收下</button>
+  </div>
+</div>
+
+<div id="app">
+
+  <!-- 頂部狀態列 -->
+  <header class="topbar">
+    <div class="logo"><span class="fox">🦊</span> 圍棋大冒險</div>
+    <div class="stat-pill rank" title="目前段位">🏆 <span id="rankName">棋小白</span></div>
+    <div class="stat-pill xp" title="經驗值">⭐ <span id="xpText">0</span> XP</div>
+    <div class="stat-pill streak" title="連續完成">🔥 <span id="streakText">0</span> 天</div>
+    <div class="xp-bar-wrap" title="距離下一段">
+      <div id="xpBar" class="xp-bar"></div>
+      <div id="xpBarText" class="xp-bar-text">0 / 100</div>
+    </div>
+  </header>
+
+  <!-- 主導覽 -->
+  <nav class="modes">
+    <button class="mode-btn active" data-screen="map"><span class="icon">📚</span> 學習地圖</button>
+    <button class="mode-btn" data-screen="problems"><span class="icon">🧩</span> 題庫闖關</button>
+    <button class="mode-btn" data-screen="play"><span class="icon">⚔️</span> 對戰練習</button>
+    <button class="mode-btn" data-screen="sandbox"><span class="icon">🎨</span> 自由擺棋</button>
+    <button class="mode-btn" data-screen="badges"><span class="icon">🏅</span> 成就殿堂</button>
+    <button class="mode-btn" data-screen="settings"><span class="icon">⚙️</span> 設定</button>
+  </nav>
+
+  <!-- 畫面：學習地圖 -->
+  <div id="screen-map" class="screen active">
+    <div class="card">
+      <div class="fox-talk">
+        <div class="fox-avatar">🦊</div>
+        <div class="fox-bubble">
+          <strong>圍圍師父：</strong>歡迎來到圍棋大冒險！我會帶你從什麼都不會的「棋小白」，一路晉升到傳說中的「棋仙」！每一章學完都有獎勵喔！
+        </div>
+      </div>
+    </div>
+    <div id="chapterMap" class="chapter-map"></div>
+  </div>
+
+  <!-- 畫面：課程內頁 -->
+  <div id="screen-lesson" class="screen">
+    <div class="lesson-header">
+      <button class="back-btn" onclick="showScreen('map')">← 回地圖</button>
+      <h2 id="lessonTitle"></h2>
+    </div>
+    <div class="lesson-body">
+      <div id="lessonText" class="lesson-text"></div>
+      <div>
+        <div class="board-wrap">
+          <div class="board-toolbar">
+            <button onclick="lessonBoardReset()">🔄 重來</button>
+            <button onclick="lessonBoardHint()">💡 提示</button>
+            <div class="status" id="lessonStatus">輪到你：黑棋</div>
+          </div>
+          <canvas id="lessonBoard" class="go-board"></canvas>
+          <div id="problemResult" class="problem-result"></div>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <button class="mode-btn" style="width:100%" onclick="lessonNext()">下一課 →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 畫面：題庫 -->
+  <div id="screen-problems" class="screen">
+    <div class="card">
+      <div class="fox-talk">
+        <div class="fox-avatar">🦊</div>
+        <div class="fox-bubble">
+          <strong>圍圍師父：</strong>挑戰題庫吧！每題都有黑棋先下，找出正確的一手就能過關。
+          答錯不會扣分，多試幾次！💪
+        </div>
+      </div>
+    </div>
+    <div id="problemList" class="problem-list"></div>
+  </div>
+
+  <!-- 畫面：單題挑戰 -->
+  <div id="screen-problem-play" class="screen">
+    <div class="lesson-header">
+      <button class="back-btn" onclick="showScreen('problems')">← 回題庫</button>
+      <h2 id="problemTitle"></h2>
+    </div>
+    <div class="problem-prompt" id="problemPrompt"></div>
+    <div class="board-wrap">
+      <div class="board-toolbar">
+        <button onclick="problemReset()">🔄 重來</button>
+        <button onclick="problemShowSolution()">📖 看解答</button>
+        <div class="status" id="problemStatus">輪到你：黑棋先下</div>
+      </div>
+      <canvas id="problemBoard" class="go-board"></canvas>
+      <div id="problemPlayResult" class="problem-result"></div>
+    </div>
+  </div>
+
+  <!-- 畫面：對弈 -->
+  <div id="screen-play" class="screen">
+    <div class="card">
+      <div class="fox-talk">
+        <div class="fox-avatar">🦊</div>
+        <div class="fox-bubble">
+          <strong>圍圍師父：</strong>來和我下一盤吧！9 路棋盤適合練習。
+          記得：圍住的房子越大越好，被打吃時要趕快逃跑！
+        </div>
+      </div>
+    </div>
+    <div class="board-wrap">
+      <div class="board-toolbar">
+        <button class="primary" onclick="startNewGame()">🎮 新對局</button>
+        <select id="playSize">
+          <option value="7">7 路（迷你）</option>
+          <option value="9" selected>9 路（推薦）</option>
+          <option value="13">13 路</option>
+          <option value="19">19 路（高手）</option>
+        </select>
+        <select id="aiLevel">
+          <option value="0">超級初學（我會放水）</option>
+          <option value="1" selected>初學</option>
+          <option value="2">中級</option>
+          <option value="3">強</option>
+        </select>
+        <button onclick="playerPass()">🤝 虛手 PASS</button>
+        <button onclick="resignGame()">🏳️ 投降</button>
+        <button onclick="undoMove()">↩️ 悔棋</button>
+        <div class="status" id="playStatus">點「新對局」開始！</div>
+      </div>
+      <canvas id="playBoard" class="go-board"></canvas>
+      <div class="move-info">
+        <div class="black-info">⚫ 黑棋（你）提子數：<span id="capB">0</span></div>
+        <div class="white-info">⚪ 白棋（電腦）提子數：<span id="capW">0</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 畫面：沙盒 -->
+  <div id="screen-sandbox" class="screen">
+    <div class="card">
+      <div class="fox-talk">
+        <div class="fox-avatar">🦊</div>
+        <div class="fox-bubble">
+          <strong>圍圍師父：</strong>自由擺棋區！可以隨意嘗試任何想法，不會記分。
+          擺出你心中最棒的形狀吧～
+        </div>
+      </div>
+    </div>
+    <div class="board-wrap">
+      <div class="board-toolbar">
+        <button onclick="sandboxClear()">🗑️ 清空</button>
+        <select id="sandboxSize">
+          <option value="9" selected>9 路</option>
+          <option value="13">13 路</option>
+          <option value="19">19 路</option>
+        </select>
+        <button id="sandboxColor" onclick="sandboxToggleColor()">⚫ 現在放黑棋</button>
+        <button onclick="sandboxAlternate()">🔄 自動換邊</button>
+        <button onclick="sandboxScore()">🧮 算地</button>
+        <div class="status" id="sandboxStatus">點空格放棋</div>
+      </div>
+      <canvas id="sandboxBoard" class="go-board"></canvas>
+    </div>
+  </div>
+
+  <!-- 畫面：成就 -->
+  <div id="screen-badges" class="screen">
+    <div class="card">
+      <h2 style="margin-bottom:12px">🏅 成就殿堂</h2>
+      <p style="color:var(--text-soft); margin-bottom:16px">
+        完成各種挑戰可以解鎖徽章。已解鎖：<span id="badgeCount">0</span> / <span id="badgeTotal">0</span>
+      </p>
+      <div id="badgeGrid" class="badge-grid"></div>
+    </div>
+  </div>
+
+  <!-- 畫面：設定 -->
+  <div id="screen-settings" class="screen">
+    <div class="card">
+      <h2 style="margin-bottom:16px">⚙️ 設定</h2>
+      <div class="settings-row">
+        <div><strong>音效</strong><br><small style="color:var(--text-soft)">放棋、提子、勝利音效</small></div>
+        <div id="toggleSound" class="toggle on" onclick="toggleSetting('sound')"></div>
+      </div>
+      <div class="settings-row">
+        <div><strong>動畫效果</strong><br><small style="color:var(--text-soft)">提子閃光、寶箱搖晃</small></div>
+        <div id="toggleAnim" class="toggle on" onclick="toggleSetting('anim')"></div>
+      </div>
+      <div class="settings-row">
+        <div><strong>顯示座標</strong><br><small style="color:var(--text-soft)">棋盤上顯示 A-J、1-9 座標</small></div>
+        <div id="toggleCoord" class="toggle" onclick="toggleSetting('coord')"></div>
+      </div>
+      <div class="settings-row">
+        <div><strong>卡通棋子</strong><br><small style="color:var(--text-soft)">黑棋變狐狸、白棋變兔子</small></div>
+        <div id="toggleCute" class="toggle" onclick="toggleSetting('cute')"></div>
+      </div>
+      <div class="settings-row">
+        <div><strong style="color:var(--danger)">重置所有進度</strong><br><small style="color:var(--text-soft)">清除 XP、徽章、闖關紀錄</small></div>
+        <button class="mode-btn" style="background:var(--danger);color:white" onclick="if(confirm('真的要重置嗎？所有進度會消失！')){resetAll()}">🔄 重置</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="bottom">
+    🦊 圍棋大冒險 · 從棋小白到棋仙的快樂之旅 · 進度自動存在本機，關掉視窗也不會消失！
+  </footer>
+
+</div>
+
+<script>
+/* ===================================================================
+   核心 1：圍棋引擎
+   =================================================================== */
+class GoEngine {
+  constructor(size = 9) {
+    this.size = size;
+    this.board = new Array(size * size).fill(0); // 0=空, 1=黑, 2=白
+    this.history = [];
+    this.koPoint = null;
+    this.captures = { 1: 0, 2: 0 };
+    this.passes = 0;
+    this.turn = 1;
+    this.lastMove = null;
+  }
+  idx(x, y) { return y * this.size + x; }
+  inBounds(x, y) { return x >= 0 && x < this.size && y >= 0 && y < this.size; }
+  get(x, y) { return this.board[this.idx(x, y)]; }
+  neighbors(x, y) {
+    const out = [];
+    if (x > 0) out.push([x-1, y]);
+    if (x < this.size-1) out.push([x+1, y]);
+    if (y > 0) out.push([x, y-1]);
+    if (y < this.size-1) out.push([x, y+1]);
+    return out;
+  }
+  getGroup(x, y, board = this.board) {
+    const color = board[this.idx(x, y)];
+    if (!color) return null;
+    const visited = new Set();
+    const stack = [[x, y]];
+    const stones = [];
+    const libs = new Set();
+    while (stack.length) {
+      const [cx, cy] = stack.pop();
+      const key = this.idx(cx, cy);
+      if (visited.has(key)) continue;
+      visited.add(key);
+      stones.push([cx, cy]);
+      for (const [nx, ny] of this.neighbors(cx, cy)) {
+        const nKey = this.idx(nx, ny);
+        const nc = board[nKey];
+        if (nc === 0) libs.add(nKey);
+        else if (nc === color && !visited.has(nKey)) stack.push([nx, ny]);
+      }
+    }
+    return { stones, liberties: libs.size, libSet: libs, color };
+  }
+  tryMove(x, y, color) {
+    if (!this.inBounds(x, y)) return { ok: false, reason: '出界' };
+    if (this.board[this.idx(x, y)]) return { ok: false, reason: '已有棋子' };
+    if (this.koPoint && this.koPoint[0] === x && this.koPoint[1] === y && this.koPoint[2] === color) {
+      return { ok: false, reason: '打劫禁手（下別處再回來）' };
+    }
+    const oldBoard = [...this.board];
+    this.board[this.idx(x, y)] = color;
+    const opp = color === 1 ? 2 : 1;
+    const captured = [];
+    const oppGroupsChecked = new Set();
+    for (const [nx, ny] of this.neighbors(x, y)) {
+      const nKey = this.idx(nx, ny);
+      if (this.board[nKey] === opp && !oppGroupsChecked.has(nKey)) {
+        const g = this.getGroup(nx, ny);
+        if (g.liberties === 0) {
+          for (const [sx, sy] of g.stones) {
+            this.board[this.idx(sx, sy)] = 0;
+            captured.push([sx, sy]);
+            oppGroupsChecked.add(this.idx(sx, sy));
+          }
+        }
+        for (const [sx, sy] of g.stones) oppGroupsChecked.add(this.idx(sx, sy));
+      }
+    }
+    const ownGroup = this.getGroup(x, y);
+    if (ownGroup.liberties === 0) {
+      this.board = oldBoard;
+      return { ok: false, reason: '禁入點（自殺）' };
+    }
+    let newKo = null;
+    if (captured.length === 1 && ownGroup.stones.length === 1 && ownGroup.liberties === 1) {
+      newKo = [captured[0][0], captured[0][1], opp];
+    }
+    this.history.push({ board: oldBoard, ko: this.koPoint, turn: this.turn, captures: {...this.captures}, lastMove: this.lastMove });
+    this.koPoint = newKo;
+    this.captures[color] += captured.length;
+    this.turn = opp;
+    this.passes = 0;
+    this.lastMove = [x, y, color];
+    return { ok: true, captured };
+  }
+  pass() {
+    this.history.push({ board: [...this.board], ko: this.koPoint, turn: this.turn, captures: {...this.captures}, lastMove: this.lastMove });
+    this.passes++;
+    this.koPoint = null;
+    this.turn = this.turn === 1 ? 2 : 1;
+    this.lastMove = null;
+  }
+  undo() {
+    if (!this.history.length) return false;
+    const h = this.history.pop();
+    this.board = h.board;
+    this.koPoint = h.ko;
+    this.turn = h.turn;
+    this.captures = h.captures;
+    this.lastMove = h.lastMove;
+    this.passes = 0;
+    return true;
+  }
+  score(komi = 6.5) {
+    const visited = new Set();
+    const terr = { 1: 0, 2: 0 };
+    for (let i = 0; i < this.size * this.size; i++) {
+      if (this.board[i] || visited.has(i)) continue;
+      const x = i % this.size, y = Math.floor(i / this.size);
+      const region = [];
+      const borders = new Set();
+      const stack = [[x, y]];
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        const key = this.idx(cx, cy);
+        if (visited.has(key) || this.board[key]) {
+          if (this.board[key]) borders.add(this.board[key]);
+          continue;
+        }
+        visited.add(key);
+        region.push(key);
+        for (const [nx, ny] of this.neighbors(cx, cy)) {
+          const nKey = this.idx(nx, ny);
+          if (this.board[nKey]) borders.add(this.board[nKey]);
+          else if (!visited.has(nKey)) stack.push([nx, ny]);
+        }
+      }
+      if (borders.size === 1) {
+        const owner = [...borders][0];
+        terr[owner] += region.length;
+      }
+    }
+    // 數子法簡化：黑地+黑子+黑提，白地+白子+白提+貼目
+    let stoneB = 0, stoneW = 0;
+    for (const v of this.board) {
+      if (v === 1) stoneB++; else if (v === 2) stoneW++;
+    }
+    const blackTotal = terr[1] + stoneB;
+    const whiteTotal = terr[2] + stoneW + komi;
+    return {
+      black: blackTotal,
+      white: whiteTotal,
+      blackTerr: terr[1],
+      whiteTerr: terr[2],
+      diff: blackTotal - whiteTotal,
+      winner: blackTotal > whiteTotal ? 'black' : (blackTotal < whiteTotal ? 'white' : 'draw')
+    };
+  }
+}
+
+/* ===================================================================
+   核心 2：簡單 AI（啟發式評分）
+   =================================================================== */
+function aiPickMove(engine, color, level = 1) {
+  const size = engine.size;
+  const opp = color === 1 ? 2 : 1;
+  const moves = [];
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (engine.board[engine.idx(x, y)]) continue;
+      // 試下
+      const test = new GoEngine(size);
+      test.board = [...engine.board];
+      test.koPoint = engine.koPoint;
+      test.captures = {...engine.captures};
+      const res = test.tryMove(x, y, color);
+      if (!res.ok) continue;
+      let score = 0;
+      // 1. 吃子加分
+      score += res.captured.length * 30;
+      // 2. 自己的氣多加分（不自緊氣）
+      const myGroup = test.getGroup(x, y);
+      score += Math.min(myGroup.liberties, 6) * 3;
+      // 自殺式自打吃大扣
+      if (myGroup.liberties === 1 && myGroup.stones.length >= 2) score -= 25;
+      if (myGroup.liberties === 1 && myGroup.stones.length === 1) score -= 5;
+      // 3. 把對手打吃加分
+      for (const [nx, ny] of engine.neighbors(x, y)) {
+        if (test.board[test.idx(nx, ny)] === opp) {
+          const og = test.getGroup(nx, ny);
+          if (og.liberties === 1) score += 15;
+          else if (og.liberties === 2) score += 4;
+        }
+      }
+      // 4. 救自己被打吃的子（在落子前已打吃）
+      for (const [nx, ny] of engine.neighbors(x, y)) {
+        if (engine.board[engine.idx(nx, ny)] === color) {
+          const myG = engine.getGroup(nx, ny);
+          if (myG.liberties === 1) score += 20;
+        }
+      }
+      // 5. 邊角中央位置（中盤前避免一線二線）
+      const totalStones = engine.board.filter(v => v).length;
+      if (totalStones < size * size * 0.5) {
+        const dist = Math.min(x, y, size-1-x, size-1-y);
+        if (dist === 0) score -= 6;
+        else if (dist === 1) score -= 2;
+        else if (dist === 2 || dist === 3) score += 4;
+      }
+      // 6. 連接同色
+      let friends = 0;
+      for (const [nx, ny] of engine.neighbors(x, y)) {
+        if (engine.board[engine.idx(nx, ny)] === color) friends++;
+      }
+      score += friends * 2;
+      // 7. 攻擊鄰近敵子（接近敵棋）
+      let enemies = 0;
+      for (const [nx, ny] of engine.neighbors(x, y)) {
+        if (engine.board[engine.idx(nx, ny)] === opp) enemies++;
+      }
+      score += enemies * 1.5;
+      // 8. 開局星位/三三/小目偏好
+      if (totalStones < 4) {
+        const star = Math.floor((size-1)/2);
+        const corner3 = 2, corner4 = 3;
+        const cands = [[corner3,corner3],[corner3,size-1-corner3],[size-1-corner3,corner3],[size-1-corner3,size-1-corner3]];
+        if (size >= 13) cands.push([corner4,corner4],[corner4,size-1-corner4],[size-1-corner4,corner4],[size-1-corner4,size-1-corner4]);
+        if (cands.some(([cx,cy])=>cx===x&&cy===y)) score += 8;
+      }
+      moves.push({ x, y, score });
+    }
+  }
+  if (!moves.length) return { pass: true };
+  moves.sort((a, b) => b.score - a.score);
+  // 依等級加入隨機性
+  let pickRange;
+  if (level === 0) pickRange = Math.min(moves.length, 20);  // 超隨機放水
+  else if (level === 1) pickRange = Math.min(moves.length, 8);
+  else if (level === 2) pickRange = Math.min(moves.length, 4);
+  else pickRange = Math.min(moves.length, 2);
+  // 高分明顯領先時也常選最佳
+  const top = moves[0].score;
+  const candidates = moves.slice(0, pickRange).filter(m => m.score > top - 10);
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  // 若分數太低（局面不利），考慮 pass
+  if (pick.score < -10 && engine.passes >= 1) return { pass: true };
+  return { x: pick.x, y: pick.y };
+}
+
+/* ===================================================================
+   核心 3：棋盤繪圖
+   =================================================================== */
+class BoardRenderer {
+  constructor(canvas, engine, options = {}) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.engine = engine;
+    this.opts = Object.assign({
+      onClick: null, showCoord: false, cute: false, highlight: [], lastMoveMark: true
+    }, options);
+    this.setSize();
+    canvas.addEventListener('click', e => this.handleClick(e));
+    window.addEventListener('resize', () => this.setSize());
+  }
+  setSize() {
+    const w = Math.min(this.canvas.parentElement.offsetWidth - 32, 560);
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.style.width = w + 'px';
+    this.canvas.style.height = w + 'px';
+    this.canvas.width = w * dpr;
+    this.canvas.height = w * dpr;
+    this.ctx.scale(dpr, dpr);
+    this.dim = w;
+    this.draw();
+  }
+  draw() {
+    const { ctx, engine } = this;
+    const N = engine.size;
+    const dim = this.dim;
+    const pad = dim * 0.05;
+    const grid = (dim - pad * 2) / (N - 1);
+    this.pad = pad; this.grid = grid;
+    // 背景
+    ctx.fillStyle = '#e8b76d';
+    ctx.fillRect(0, 0, dim, dim);
+    // 木紋紋理（簡化）
+    ctx.fillStyle = 'rgba(180,120,60,0.08)';
+    for (let i = 0; i < dim; i += 4) ctx.fillRect(0, i, dim, 1);
+    // 線
+    ctx.strokeStyle = '#3a2410';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      ctx.moveTo(pad, pad + i * grid);
+      ctx.lineTo(pad + (N-1) * grid, pad + i * grid);
+      ctx.moveTo(pad + i * grid, pad);
+      ctx.lineTo(pad + i * grid, pad + (N-1) * grid);
+    }
+    ctx.stroke();
+    // 星位
+    ctx.fillStyle = '#3a2410';
+    const stars = this.starPoints(N);
+    for (const [sx, sy] of stars) {
+      ctx.beginPath();
+      ctx.arc(pad + sx * grid, pad + sy * grid, 3.5, 0, 2*Math.PI);
+      ctx.fill();
+    }
+    // 座標
+    if (this.opts.showCoord) {
+      ctx.fillStyle = '#3a2410';
+      ctx.font = `${Math.max(10, grid * 0.3)}px sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const letters = 'ABCDEFGHJKLMNOPQRST';
+      for (let i = 0; i < N; i++) {
+        ctx.fillText(letters[i], pad + i * grid, pad / 2);
+        ctx.fillText(letters[i], pad + i * grid, dim - pad / 2);
+        ctx.fillText(N - i, pad / 2, pad + i * grid);
+        ctx.fillText(N - i, dim - pad / 2, pad + i * grid);
+      }
+    }
+    // 高亮（教學提示）
+    for (const h of (this.opts.highlight || [])) {
+      const [hx, hy, hc] = h;
+      ctx.strokeStyle = hc || '#ff5722';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.rect(pad + hx * grid - grid*0.4, pad + hy * grid - grid*0.4, grid*0.8, grid*0.8);
+      ctx.stroke();
+    }
+    // 棋子
+    const r = grid * 0.46;
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const v = engine.board[engine.idx(x, y)];
+        if (!v) continue;
+        const cx = pad + x * grid, cy = pad + y * grid;
+        this.drawStone(cx, cy, r, v);
+      }
+    }
+    // 最後一手紅點
+    if (this.opts.lastMoveMark && engine.lastMove) {
+      const [lx, ly, lc] = engine.lastMove;
+      const cx = pad + lx * grid, cy = pad + ly * grid;
+      ctx.strokeStyle = lc === 1 ? '#ff5722' : '#ff5722';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.4, 0, 2*Math.PI);
+      ctx.stroke();
+    }
+    // 打劫禁手標記
+    if (engine.koPoint) {
+      const [kx, ky] = engine.koPoint;
+      ctx.fillStyle = 'rgba(255,87,34,0.5)';
+      ctx.fillRect(pad + kx * grid - grid*0.15, pad + ky * grid - grid*0.15, grid*0.3, grid*0.3);
+    }
+  }
+  drawStone(cx, cy, r, color) {
+    const ctx = this.ctx;
+    if (this.opts.cute) {
+      // 卡通版：黑棋=小狐狸 emoji，白棋=兔子
+      ctx.font = `${r * 1.8}px sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(color === 1 ? '🦊' : '🐰', cx, cy);
+      return;
+    }
+    // 陰影
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.arc(cx + 1.5, cy + 2, r, 0, 2*Math.PI); ctx.fill();
+    // 主體
+    const grad = ctx.createRadialGradient(cx - r*0.3, cy - r*0.3, r*0.1, cx, cy, r);
+    if (color === 1) {
+      grad.addColorStop(0, '#555');
+      grad.addColorStop(1, '#000');
+    } else {
+      grad.addColorStop(0, '#fff');
+      grad.addColorStop(1, '#d0d0d0');
+    }
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2*Math.PI); ctx.fill();
+  }
+  starPoints(N) {
+    if (N === 7) return [[3,3]];
+    if (N === 9) return [[2,2],[2,6],[6,2],[6,6],[4,4]];
+    if (N === 13) return [[3,3],[3,9],[9,3],[9,9],[6,6]];
+    if (N === 19) return [[3,3],[3,9],[3,15],[9,3],[9,9],[9,15],[15,3],[15,9],[15,15]];
+    return [];
+  }
+  handleClick(e) {
+    if (!this.opts.onClick) return;
+    const rect = this.canvas.getBoundingClientRect();
+    const px = e.clientX - rect.left, py = e.clientY - rect.top;
+    const x = Math.round((px - this.pad) / this.grid);
+    const y = Math.round((py - this.pad) / this.grid);
+    if (this.engine.inBounds(x, y)) this.opts.onClick(x, y);
+  }
+}
+
+/* ===================================================================
+   核心 4：遊戲化系統（XP、段位、徽章、寶箱）
+   =================================================================== */
+const RANKS = [
+  { name: '棋小白', xp: 0, icon: '🥚' },
+  { name: '棋蛋蛋', xp: 100, icon: '🐣' },
+  { name: '棋童', xp: 300, icon: '👶' },
+  { name: '棋徒', xp: 600, icon: '🧒' },
+  { name: '棋士', xp: 1000, icon: '🧑‍🎓' },
+  { name: '棋師', xp: 1500, icon: '🧙' },
+  { name: '棋王', xp: 2200, icon: '👑' },
+  { name: '棋聖', xp: 3000, icon: '⚡' },
+  { name: '棋仙', xp: 4000, icon: '🌟' }
+];
+
+const BADGES = [
+  { id: 'first_step',   name: '踏出第一步', icon: '👣', desc: '完成第一課' },
+  { id: 'first_capture',name: '初次提子',   icon: '🎯', desc: '在練習中第一次提子' },
+  { id: 'ch1_done',     name: '入門出師',   icon: '🎓', desc: '完成第一章' },
+  { id: 'ch2_done',     name: '基礎扎實',   icon: '🏗️', desc: '完成第二章' },
+  { id: 'ch3_done',     name: '戰術初成',   icon: '⚔️', desc: '完成第三章' },
+  { id: 'ch4_done',     name: '段位精進',   icon: '🥋', desc: '完成第四章' },
+  { id: 'ch5_done',     name: '頂峰之路',   icon: '🏔️', desc: '完成第五章' },
+  { id: 'streak3',      name: '三天堅持',   icon: '🔥', desc: '連續 3 天練習' },
+  { id: 'streak7',      name: '一週鐵粉',   icon: '💎', desc: '連續 7 天練習' },
+  { id: 'streak30',     name: '月度棋癡',   icon: '🌙', desc: '連續 30 天練習' },
+  { id: 'win_ai_easy',  name: '初戰告捷',   icon: '🏆', desc: '擊敗初學 AI' },
+  { id: 'win_ai_mid',   name: '小有實力',   icon: '🥈', desc: '擊敗中級 AI' },
+  { id: 'win_ai_hard',  name: '高手風範',   icon: '🥇', desc: '擊敗強 AI' },
+  { id: 'p10_solved',   name: '解題達人',   icon: '🧩', desc: '解開 10 題' },
+  { id: 'p30_solved',   name: '題庫征服者', icon: '🧠', desc: '解開 30 題' },
+  { id: 'lucky_5',      name: '幸運兒',     icon: '🍀', desc: '抽中 5 個寶箱' },
+  { id: 'all_lessons',  name: '全課通',     icon: '📚', desc: '看完所有課程' }
+];
+
+const STATE = {
+  xp: 0, rankIdx: 0, streak: 0, lastDate: null,
+  lessonsDone: {}, problemsDone: {}, badges: {}, boxesOpened: 0, aiWins: { 0:0, 1:0, 2:0, 3:0 },
+  settings: { sound: true, anim: true, coord: false, cute: false }
+};
+
+function save() { localStorage.setItem('weiqi_adventure_v1', JSON.stringify(STATE)); }
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem('weiqi_adventure_v1'));
+    if (s) Object.assign(STATE, s);
+  } catch(e) {}
+}
+
+function gainXP(amount, reason = '') {
+  STATE.xp += amount;
+  showXPFloat(amount);
+  // 升級檢查
+  let newRank = 0;
+  for (let i = RANKS.length - 1; i >= 0; i--) {
+    if (STATE.xp >= RANKS[i].xp) { newRank = i; break; }
+  }
+  if (newRank > STATE.rankIdx) {
+    STATE.rankIdx = newRank;
+    showFloater(`🎉 升段了！\n${RANKS[newRank].icon} ${RANKS[newRank].name}`);
+    playSound('levelup');
+  }
+  // 隨機寶箱（變動比例獎勵）
+  if (Math.random() < 0.12) showBox();
+  save();
+  updateTopbar();
+}
+
+function checkStreak() {
+  const today = new Date().toDateString();
+  if (STATE.lastDate === today) return;
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (STATE.lastDate === yesterday.toDateString()) {
+    STATE.streak++;
+  } else if (STATE.lastDate !== today) {
+    STATE.streak = 1;
+  }
+  STATE.lastDate = today;
+  if (STATE.streak === 3) unlockBadge('streak3');
+  if (STATE.streak === 7) unlockBadge('streak7');
+  if (STATE.streak === 30) unlockBadge('streak30');
+  save();
+}
+
+function unlockBadge(id) {
+  if (STATE.badges[id]) return;
+  STATE.badges[id] = Date.now();
+  const b = BADGES.find(x => x.id === id);
+  if (b) showFloater(`🏅 解鎖徽章！\n${b.icon} ${b.name}`);
+  save();
+}
+
+function updateTopbar() {
+  document.getElementById('rankName').textContent = RANKS[STATE.rankIdx].icon + ' ' + RANKS[STATE.rankIdx].name;
+  document.getElementById('xpText').textContent = STATE.xp;
+  document.getElementById('streakText').textContent = STATE.streak;
+  const cur = RANKS[STATE.rankIdx].xp;
+  const next = RANKS[STATE.rankIdx + 1] ? RANKS[STATE.rankIdx + 1].xp : RANKS[STATE.rankIdx].xp + 1;
+  const pct = STATE.rankIdx + 1 >= RANKS.length ? 100 : Math.min(100, (STATE.xp - cur) / (next - cur) * 100);
+  document.getElementById('xpBar').style.width = pct + '%';
+  document.getElementById('xpBarText').textContent = STATE.rankIdx + 1 >= RANKS.length
+    ? '✨ 已達最高境界 ✨' : `${STATE.xp - cur} / ${next - cur}`;
+}
+
+/* ===================================================================
+   核心 5：寶箱（變動比例獎勵）
+   =================================================================== */
+const BOX_REWARDS = [
+  { weight: 50, xp: 10, msg: '🪙 +10 XP 銅幣' },
+  { weight: 30, xp: 25, msg: '🥈 +25 XP 銀幣' },
+  { weight: 15, xp: 50, msg: '🥇 +50 XP 金幣！' },
+  { weight: 4,  xp: 100, msg: '💎 +100 XP 鑽石！稀有！' },
+  { weight: 1,  xp: 250, msg: '🌈 +250 XP 傳說獎勵！恭喜！' }
+];
+
+function showBox() {
+  document.getElementById('boxEmoji').textContent = '🎁';
+  document.getElementById('boxEmoji').className = 'box-emoji';
+  document.getElementById('boxReward').textContent = '點一下寶箱看看裡面有什麼！';
+  document.getElementById('boxModal').classList.add('show');
+}
+function openBox() {
+  const emoji = document.getElementById('boxEmoji');
+  if (emoji.classList.contains('opened')) return;
+  emoji.classList.add('opened');
+  emoji.textContent = '✨';
+  const total = BOX_REWARDS.reduce((s, r) => s + r.weight, 0);
+  let roll = Math.random() * total;
+  let pick = BOX_REWARDS[0];
+  for (const r of BOX_REWARDS) {
+    if (roll < r.weight) { pick = r; break; }
+    roll -= r.weight;
+  }
+  STATE.xp += pick.xp;
+  STATE.boxesOpened++;
+  if (STATE.boxesOpened >= 5) unlockBadge('lucky_5');
+  document.getElementById('boxReward').textContent = pick.msg;
+  playSound('reward');
+  save();
+  updateTopbar();
+}
+function closeBox() { document.getElementById('boxModal').classList.remove('show'); }
+
+/* ===================================================================
+   核心 6：浮動提示與音效
+   =================================================================== */
+function showFloater(text) {
+  const f = document.getElementById('floater');
+  f.innerHTML = text.replace(/\n/g, '<br>');
+  f.classList.remove('show');
+  void f.offsetWidth;
+  f.classList.add('show');
+}
+function showXPFloat(amount) {
+  const div = document.createElement('div');
+  div.className = 'xp-float';
+  div.textContent = `+${amount} XP`;
+  div.style.left = (window.innerWidth / 2 + (Math.random()-0.5)*100) + 'px';
+  div.style.top = (window.innerHeight / 3) + 'px';
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 1300);
+}
+
+let audioCtx = null;
+function playSound(type) {
+  if (!STATE.settings.sound) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    let f1, f2, dur;
+    switch (type) {
+      case 'place': f1 = 440; f2 = 220; dur = 0.08; break;
+      case 'capture': f1 = 800; f2 = 100; dur = 0.25; break;
+      case 'win': f1 = 523; f2 = 784; dur = 0.6; break;
+      case 'lose': f1 = 300; f2 = 150; dur = 0.4; break;
+      case 'reward': f1 = 660; f2 = 990; dur = 0.4; break;
+      case 'levelup': f1 = 523; f2 = 1046; dur = 0.5; break;
+      case 'wrong': f1 = 200; f2 = 100; dur = 0.2; break;
+      default: f1 = 500; f2 = 500; dur = 0.1;
+    }
+    o.frequency.setValueAtTime(f1, t);
+    o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(0.15, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.start(t); o.stop(t + dur);
+  } catch(e) {}
+}
+
+/* ===================================================================
+   課程內容：白話文 + 互動棋盤
+   =================================================================== */
+const CHAPTERS = [
+  {
+    id: 'ch1', title: '第一章 · 圍棋小白', rank: '入門 30K-25K',
+    emoji: '🥚', desc: '完全沒摸過棋子？從這裡開始就對了！學會規則就能跟人下棋。',
+    lessons: [
+      {
+        id: 'l1_1', title: '什麼是圍棋？',
+        text: `<h3>🦊 圍棋是世界上最老的桌遊</h3>
+<p>嗨，小棋手！歡迎來到圍棋世界！圍棋已經有<b>四千多年</b>歷史，比你阿公的阿公的阿公還要老。</p>
+<div class="key-point">
+🎯 <b>圍棋的目標：圍住更多的「房子」（地盤）。</b><br>
+誰圍的地比較大，誰就贏了！就像在地上畫圈圈，看誰圈得大。
+</div>
+<p>圍棋三大基本規矩：</p>
+<ol>
+<li><b>棋子放在「線的交叉點」上</b>，不是格子裡喔！</li>
+<li><b>黑棋先下</b>，黑白輪流下，下了不能反悔。</li>
+<li><b>圍地多的贏</b>。為了公平，白棋因為後下，最後會多算 <b>6.5 目</b>（叫「貼目」）。</li>
+</ol>
+<div class="tip">
+💡 <b>小知識：</b>圍棋棋盤有 7 路、9 路、13 路、19 路。<b>正式比賽用 19 路</b>，但新手從 9 路開始最舒服！
+</div>
+<p>右邊的棋盤點點看，感受一下放棋的感覺～</p>`,
+        boardSize: 9, mode: 'freeplay', target: 'place_5_stones',
+        hint: '隨便點點看！想放哪就放哪～', xp: 20
+      },
+      {
+        id: 'l1_2', title: '氣 - 石頭的呼吸',
+        text: `<h3>🌬️ 每顆棋子都要呼吸</h3>
+<p>圍棋裡每顆棋子都有「<b>氣</b>」，你可以想像它在呼吸的空間。</p>
+<ul>
+<li>下在<b>棋盤中間</b>：上下左右 4 個鄰居都空著 → <b>4 口氣</b></li>
+<li>下在<b>邊上</b>：少一邊 → <b>3 口氣</b></li>
+<li>下在<b>角落</b>：少兩邊 → <b>2 口氣</b></li>
+</ul>
+<div class="key-point">
+🌬️ <b>氣 = 一顆棋子旁邊（上下左右四個方向）的空點數量。</b>
+</div>
+<p><b>重要：「氣」只看四個方向，斜角不算氣！</b></p>
+<div class="warn">
+⚠️ <b>連在一起的棋子算一群，氣是共用的。</b><br>
+兩顆黑棋手牽手連在一起，外面有 6 個空點 → 這群的氣 = 6。
+</div>
+<p>看看右邊的範例：黑棋在角落只有 2 口氣，紅圈是它的氣。</p>`,
+        boardSize: 7, mode: 'demo',
+        setup: [[0,0,1]], highlight: [[1,0,'red'],[0,1,'red']],
+        hint: '紅圈標出黑棋的「氣」（呼吸空間）', xp: 25
+      },
+      {
+        id: 'l1_3', title: '提子 - 圍住就吃掉！',
+        text: `<h3>🎯 圍棋最爽快的一招：吃子</h3>
+<p>當你把對方的棋子<b>氣全部堵住</b>（變成 0 口氣），就可以把它從棋盤上拿掉！這叫「<b>提子</b>」，吃掉的棋子叫「<b>提子數</b>」，最後算分會用到。</p>
+<div class="key-point">
+🎯 <b>提子的條件：對方那群棋子的氣 = 0</b>
+</div>
+<p>右邊的題目：白棋只剩 1 口氣（這叫「<b>打吃</b>」），輪到你下黑棋。請點那個唯一的氣，把白棋吃掉！</p>
+<div class="tip">
+💡 <b>小撇步：</b>提子後，那個位置會變空，反而讓你自己的棋多 1 口氣。所以吃子是「賺氣」的好招！
+</div>`,
+        boardSize: 7, mode: 'problem',
+        setup: [[2,3,2],[1,3,1],[3,3,1],[2,2,1]],
+        solution: [[2,4,1]],
+        hint: '白棋只剩下方一口氣，黑棋下在哪能吃掉它？', xp: 30,
+        successMsg: '🎉 太棒了！你完成了人生第一次提子！',
+        achievement: 'first_capture'
+      },
+      {
+        id: 'l1_4', title: '禁入點 - 不能自殺',
+        text: `<h3>🚫 有些地方不能下</h3>
+<p>想像有個地方，你下進去就會被自己人圍死。這種地方叫「<b>禁入點</b>」（也叫「自殺點」），規定<b>不能下</b>。</p>
+<div class="key-point">
+🚫 <b>禁入點 = 下完之後自己沒氣的位置</b>
+</div>
+<p>但是有個重要例外：</p>
+<div class="tip">
+💡 <b>如果下進去能<u>吃掉</u>對方的棋子，那就可以下！</b><br>
+因為吃掉敵人後，那些位置變空，你的氣就回來了。
+</div>
+<p>右邊範例：紅圈那格是禁入點，白棋下進去會立刻沒氣（被四顆黑棋圍死），所以不能下。</p>
+<p><b>但</b>如果那一格周圍黑棋只剩 1 口氣，白棋下進去能吃黑 → 就<b>可以下</b>（叫「<b>提子優先於禁入</b>」）。</p>`,
+        boardSize: 7, mode: 'demo',
+        setup: [[3,2,1],[2,3,1],[4,3,1],[3,4,1]],
+        highlight: [[3,3,'red']],
+        hint: '紅框那格白棋不能下（會自殺），除非能吃黑', xp: 25
+      },
+      {
+        id: 'l1_5', title: '打劫 - 不能無限循環',
+        text: `<h3>🔄 為什麼會有「打劫」規則？</h3>
+<p>想像一下這個情況：</p>
+<ol>
+<li>黑棋吃掉一顆白棋</li>
+<li>白棋馬上反吃回那顆黑棋</li>
+<li>黑棋又反吃回...</li>
+<li>白棋又反吃...<b>無限循環！棋永遠下不完！</b></li>
+</ol>
+<div class="key-point">
+🔄 <b>打劫規則：被提子後，對方<u>不能馬上下回原處</u>。要先下別的地方，下一回合才可以再回來。</b>
+</div>
+<p>這條規則確保棋局一定會結束。「劫」是圍棋裡<b>非常重要</b>的戰術，高手會用「劫材」（其他緊急的地方）逼對方應付，趁機把劫補回來。</p>
+<div class="tip">
+💡 <b>記法：</b>剛剛被吃的地方，下一手不能立刻提回去。「<b>提一子，待回手</b>」。
+</div>
+<p>新手階段：先記住規則，等之後對殺多了，自然會懂打劫的妙用。</p>`,
+        boardSize: 7, mode: 'demo',
+        setup: [[2,3,1],[4,3,1],[3,2,1],[3,4,2],[2,4,2],[4,4,2]],
+        hint: '經典劫形：雙方互相打吃對方一子', xp: 25
+      },
+      {
+        id: 'l1_6', title: '怎麼算誰贏？（數目）',
+        text: `<h3>🧮 終局算分</h3>
+<p>當雙方都覺得「沒地方可下」了，就會<b>輪流虛手（pass）</b>，棋局結束。然後開始算分。</p>
+<div class="key-point">
+🧮 <b>數目法：</b>數每邊圍住的<b>空點</b>（純空地），再加上吃到的<b>提子數</b>，誰多誰贏。<br><br>
+🧮 <b>數子法（台灣常用）：</b>數每邊的棋子數+圍住的空點數，誰多誰贏。
+</div>
+<p>本遊戲使用簡化算法：</p>
+<ul>
+<li><b>黑棋總分</b> = 黑地盤 + 黑棋子數</li>
+<li><b>白棋總分</b> = 白地盤 + 白棋子數 + <b>6.5</b>（貼目，因為黑先所以白補回）</li>
+</ul>
+<div class="tip">
+💡 <b>什麼算「圍住」？</b>一片空地<u>只</u>被一種顏色包圍，這片就是那邊的。如果被兩種顏色都接觸，就是「中立空地」，沒人拿到。
+</div>
+<p>右邊棋盤：黑棋圍了左下角（5 點），白棋圍了右上角（5 點）。算算看誰贏？</p>
+<p><b>答案：</b>黑 5+棋子 4 = 9，白 5+棋子 4+貼目 6.5 = 15.5 → <b>白贏 6.5 目</b>！</p>
+<p>所以黑棋需要圍得比白多 6.5 目以上才贏。難度比較高，但黑先下也有先手優勢！</p>`,
+        boardSize: 7, mode: 'demo',
+        setup: [
+          [0,4,1],[1,4,1],[2,4,1],[3,4,1],[4,3,1],[5,2,1],[6,1,1],
+          [0,3,2],[1,2,2],[2,1,2],[3,0,2],[4,0,2],[5,0,2],[6,0,2]
+        ],
+        hint: '看出黑白各自圍的地盤了嗎？', xp: 30
+      }
+    ]
+  },
+  {
+    id: 'ch2', title: '第二章 · 棋童', rank: '初級 25K-15K',
+    emoji: '🐣', desc: '會規則了，現在學「形狀」。連接、切斷、做活——讓你的棋子變強！',
+    lessons: [
+      {
+        id: 'l2_1', title: '連接：手牽手才有力量',
+        text: `<h3>🤝 兩顆棋子比一顆強</h3>
+<p>單獨一顆棋子很弱，容易被吃。但是<b>連在一起</b>就強多了！</p>
+<div class="key-point">
+🤝 <b>連接的核心：同色棋子上下左右相鄰，氣是共用的。</b>
+</div>
+<p>例子：</p>
+<ul>
+<li>一顆黑棋（中間）：4 口氣</li>
+<li>兩顆黑棋連一起：6 口氣（不是 4+4=8，因為中間的氣抵消了）</li>
+<li>三顆黑棋一排：8 口氣</li>
+</ul>
+<div class="tip">
+💡 <b>連接的方式：</b><br>
+1. <b>直接相鄰</b>（最緊密）<br>
+2. <b>「跳」</b>（中間隔一格）：快速擴張，但要小心被切斷<br>
+3. <b>「飛」</b>（馬步走法）：靈活但有空隙<br>
+新手先學會直接連接和跳就夠了。
+</div>
+<p>右邊：黑棋已經形成一個強壯的「群」，被白棋攻擊也不怕。</p>`,
+        boardSize: 7, mode: 'demo',
+        setup: [[2,3,1],[3,3,1],[4,3,1],[1,4,2],[5,4,2]],
+        hint: '黑棋三子相連，氣多又強', xp: 30
+      },
+      {
+        id: 'l2_2', title: '切斷：拆散敵人',
+        text: `<h3>✂️ 把敵人切開來各個擊破</h3>
+<p>如果對方棋子之間有空隙，你可以下在中間，把他們<b>切斷</b>。被切斷的棋子變成兩群，氣變少，更容易被攻擊！</p>
+<div class="key-point">
+✂️ <b>切斷三好處：</b><br>
+1. 對方棋子變弱（氣少了）<br>
+2. 你可能可以追殺其中一邊<br>
+3. 至少能逼對方花棋逃跑，自己撈到便宜
+</div>
+<div class="tip">
+💡 <b>什麼叫「斷點」？</b>對方兩顆棋斜角相鄰但沒連接的地方，叫斷點。下在斷點就完成切斷！
+</div>
+<p>右邊題目：白棋兩顆棋斜角擺，黑棋下在哪可以切斷？</p>`,
+        boardSize: 7, mode: 'problem',
+        setup: [[2,3,2],[3,2,2]],
+        solution: [[3,3,1],[2,2,1]],
+        hint: '黑下在 (3,3) 或 (2,2) 都能切斷白的兩子！', xp: 35
+      },
+      {
+        id: 'l2_3', title: '兩眼活棋：永遠殺不死',
+        text: `<h3>👁️👁️ 兩個眼睛才安全</h3>
+<p>圍棋裡有個<b>絕對規則</b>：</p>
+<div class="key-point">
+👁️👁️ <b>一群棋只要有「兩個眼」，就是「活棋」，永遠不會被吃掉！</b>
+</div>
+<p><b>什麼是「眼」？</b>就是被自己的棋子完全包圍的<b>一個空點</b>。對方下進去等於自殺（禁入點），所以下不進去。</p>
+<p><b>為什麼需要兩個？</b>因為：</p>
+<ul>
+<li>只有 1 個眼 → 那個眼是唯一的氣 → 對方填掉外面其他氣後，眼也可以填（會吃掉你）→ <b>死棋</b></li>
+<li>有 2 個眼 → 對方要填哪個都會自殺 → <b>下不進去 = 永遠活著</b></li>
+</ul>
+<div class="warn">
+⚠️ <b>小心：「假眼」不算！</b>如果眼的四個對角中有 3 個以上不是自己的，那個眼有可能被吃破，不算真眼。<br>
+角邊：2 個對角中至少要 1 個自己的<br>
+中間：4 個對角中至少要 3 個自己的
+</div>
+<p>右邊範例：黑棋在角落有兩個眼（紅框），不管白棋怎麼下都殺不死！</p>`,
+        boardSize: 7, mode: 'demo',
+        setup: [
+          [0,2,1],[1,2,1],[2,2,1],[2,1,1],[2,0,1],
+          [0,0,1]
+        ],
+        highlight: [[1,0,'green'],[1,1,'green']],
+        hint: '綠框=兩個眼，這群黑棋是活棋！', xp: 40
+      },
+      {
+        id: 'l2_4', title: '死活基本形：直三 vs 彎三',
+        text: `<h3>🏠 看到這些形要會判斷死活</h3>
+<p>有幾個經典形狀，新手一定要記住：</p>
+<div class="key-point">
+<b>直三（一直排三格的空間）：</b>輪到攻方下中間 = <b>死</b>；輪到守方下中間 = <b>活</b><br>
+<b>彎三（L 形三格）：</b>同上，<b>下中間決勝</b><br>
+<b>直四：</b>守方下中間 = 兩眼活；攻方下中間 = 一眼，死<br>
+<b>方四（2x2 正方形空間）：</b>無法做兩眼，<b>必死</b><br>
+<b>板六：</b>邊上排 6 個空，守方先下能活，攻方先下殺死
+</div>
+<p><b>口訣：</b>「直三、彎三、丁四、刀五、葡萄六」這些都是死活基本形。</p>
+<div class="tip">
+💡 <b>核心觀念：</b>看到對方棋圍出空間時，先想「他能不能做兩眼？」<br>
+→ 如果空間 ≤ 5 個點且形不好，通常可以殺死！<br>
+→ 如果空間 ≥ 6 個點，多半能活。
+</div>
+<p>右邊：黑棋圍出「直三」的空間。輪到白棋（攻方）下，下在中間紅點 = 殺死黑！</p>`,
+        boardSize: 7, mode: 'demo',
+        setup: [
+          [0,1,1],[1,1,1],[2,1,1],[3,1,1],[4,1,1],
+          [0,2,2],[1,2,2],[2,2,2],[3,2,2],[4,2,2],
+          [0,0,2],[4,0,2]
+        ],
+        highlight: [[2,0,'red']],
+        hint: '攻方下「中央點」是殺棋關鍵', xp: 45
+      },
+      {
+        id: 'l2_5', title: '對殺：誰先吃誰',
+        text: `<h3>⚔️ 兩群棋互殺，誰氣多誰贏</h3>
+<p>兩群不同顏色的棋子彼此沒有連到自己人，又互相切住對方的氣，這時就是「<b>對殺</b>」。誰能先把對方的氣堵光，誰就吃掉對方！</p>
+<div class="key-point">
+⚔️ <b>對殺核心：數氣！</b><br>
+雙方比氣數，多的勝。但要看誰先動手（先手很重要）。
+</div>
+<p><b>對殺三原則：</b></p>
+<ol>
+<li><b>數氣</b>：算清楚雙方各有幾口氣</li>
+<li><b>緊外氣</b>：先填對方的「外氣」（不和自己相鄰的氣）</li>
+<li><b>留公氣</b>：「公氣」（雙方共有的氣）最後填，太早填會被吃</li>
+</ol>
+<div class="warn">
+⚠️ <b>常見錯誤：</b>看到對方棋只剩 2 氣就急著下，結果發現自己也只剩 1 氣 → 被反殺。<br>
+<b>動手前先數氣！</b>
+</div>
+<p>右邊題目：黑白互相纏鬥。黑棋有 3 氣，白棋有 2 氣，輪到黑下。下對地方能吃掉白！</p>`,
+        boardSize: 7, mode: 'problem',
+        setup: [
+          [1,2,1],[2,2,1],[3,2,1],
+          [1,3,2],[2,3,2],[3,3,2],
+          [0,3,1],[4,3,1],[2,4,1]
+        ],
+        solution: [[1,4,1],[3,4,1],[0,2,1],[4,2,1]],
+        hint: '緊白棋下方剩餘的外氣！', xp: 50
+      }
+    ]
+  },
+  {
+    id: 'ch3', title: '第三章 · 棋士', rank: '中級 15K-5K',
+    emoji: '🧒', desc: '會基本技巧後，學「布局思想」——讓你的棋走在大方向上。',
+    lessons: [
+      {
+        id: 'l3_1', title: '金角銀邊草肚皮',
+        text: `<h3>💰 不是所有地方都一樣值錢</h3>
+<p>圍棋有句千古名言：「<b>金角、銀邊、草肚皮（中央）</b>」。意思是同樣下一顆棋，<b>角落最賺、邊次之、中央最虧</b>。</p>
+<div class="key-point">
+💰 <b>為什麼角落最強？</b><br>
+角落：兩邊有「天然圍牆」（棋盤邊界），<b>圍 9 目地只需要 6 顆棋</b><br>
+邊：一邊有牆，圍 9 目要 9 顆<br>
+中央：四面都要自己圍，圍 9 目要 12 顆
+</div>
+<p>所以開局時：</p>
+<ol>
+<li><b>先佔四個角</b>（最有效率）</li>
+<li>再佔邊</li>
+<li>中央留到中盤再說</li>
+</ol>
+<div class="tip">
+💡 <b>常見開局點：</b><br>
+<b>星位（4-4）</b>：兼顧速度與外勢，現代主流<br>
+<b>小目（3-4）</b>：守角紮實，攻守平衡<br>
+<b>三三（3-3）</b>：守角最快，但偏低<br>
+新手推薦：<b>星位</b>（最簡單）
+</div>
+<p>右邊：經典開局，黑白都先佔角，沒人浪費棋在中央。</p>`,
+        boardSize: 13, mode: 'demo',
+        setup: [[3,3,1],[9,9,1],[9,3,2],[3,9,2]],
+        hint: '四個星位 = 最有效率的開局', xp: 45
+      },
+      {
+        id: 'l3_2', title: '簡單定石：星位小飛掛',
+        text: `<h3>📐 定石 = 雙方都不吃虧的標準下法</h3>
+<p>「<b>定石</b>」是前人在角落實戰中發展出的<b>公認好下法</b>。雙方按定石下，<b>大致平等</b>，誰偏離反而吃虧。</p>
+<div class="key-point">
+📐 <b>學定石的方法：</b><br>
+1. 不要一次背太多，每週學 1-2 個就好<br>
+2. 重點是<b>理解每一手的目的</b>，不是死背順序<br>
+3. 學完要懂「為什麼這樣下」，否則會用錯場合
+</div>
+<p><b>最常見：星位小飛掛角</b>（白小飛掛黑星位，黑可以選好幾種應法）</p>
+<ol>
+<li>黑星位（4-4）</li>
+<li>白小飛掛角（3-5 或 5-3）</li>
+<li>黑常見應法：
+<ul>
+<li><b>單關守角</b>（4-3）：穩，但稍慢</li>
+<li><b>小飛守角</b>（3-3 跳）：實地大，但讓對方厚</li>
+<li><b>夾擊</b>：不應守角，反過來逼掛角的白棋</li>
+</ul>
+</li>
+</ol>
+<div class="tip">
+💡 <b>新手建議：</b>遇到對方掛角，先學<b>「單關守」</b>（4-3 位置跳一手），最簡單最不會錯。
+</div>
+<p>右邊：黑星位+白掛角+黑單關守的標準形。</p>`,
+        boardSize: 9, mode: 'demo',
+        setup: [[2,2,1],[4,2,2],[2,4,1]],
+        hint: '黑星位（左上）→白小飛掛→黑單關守', xp: 50
+      },
+      {
+        id: 'l3_3', title: '布局思想：大場 vs 急場',
+        text: `<h3>🗺️ 開局時該下哪裡？</h3>
+<p>開局每一步都很重要。下棋前要問自己兩個問題：</p>
+<div class="key-point">
+🗺️ <b>1. 哪裡是「大場」？</b>= 圍地最大的地方（通常是邊和角的空缺處）<br>
+🗺️ <b>2. 哪裡是「急場」？</b>= 不下會出大問題的地方（攻擊或防禦）
+</div>
+<p><b>優先順序：急場 > 大場 > 普通好點</b></p>
+<p><b>急場長什麼樣？</b></p>
+<ul>
+<li>對方有一群弱棋，現在不攻就活了 → 急場！</li>
+<li>自己一群棋快被殺，現在不救就完蛋 → 急場！</li>
+<li>關鍵的「形」差一手就完美/崩潰 → 急場！</li>
+</ul>
+<div class="warn">
+⚠️ <b>新手常犯：</b>看到大場眼睛發亮就衝，忽略了自己有快死的棋。<br>
+<b>口訣：「先救命，再賺錢」</b>
+</div>
+<p><b>大場的順序：</b></p>
+<ol>
+<li>未佔的角（最大）</li>
+<li>邊上能擴張地盤的點</li>
+<li>能讓自己模樣變大的點</li>
+</ol>
+<p>右邊：白佔了 3 角，剩下 1 個角是大場，黑現在下右下角是<b>最大的</b>！</p>`,
+        boardSize: 13, mode: 'demo',
+        setup: [[3,3,1],[3,9,2],[9,3,2],[9,9,2]],
+        highlight: [[3,9,'orange'],[9,3,'orange']],
+        hint: '對角佔角是常見布局，雙方在搶大場', xp: 50
+      },
+      {
+        id: 'l3_4', title: '手筋入門：扳、跳、撲、倒撲',
+        text: `<h3>🥋 手筋 = 精彩的關鍵一手</h3>
+<p>「<b>手筋</b>」是局部最關鍵、最有效的一手，常常能<b>出奇制勝</b>。新手記四種：</p>
+<div class="key-point">
+🥋 <b>四種基本手筋：</b><br>
+1. <b>扳</b>：沿著對方棋子斜角下，擋住擴張<br>
+2. <b>跳</b>：自己的棋隔一格再下，快速擴張<br>
+3. <b>撲</b>：明知道會被吃，但是吃完對方變死<br>
+4. <b>倒撲</b>：丟一顆棋，對方提了之後反而被你吃回更多
+</div>
+<p><b>「撲」的妙用範例：</b></p>
+<p>對方圍了一個「方四」的空間（2×2 共 4 個點）。如果你下一顆進去（撲），對方提你，提完之後那個空間變「3 個眼」，但形狀不對，<b>對方反而做不出兩眼 = 死棋</b>！</p>
+<div class="tip">
+💡 <b>學手筋的方法：</b>每天看 3-5 道死活/手筋題，<b>不要直接看答案</b>，先想 30 秒。<br>
+慢慢累積「<b>棋感</b>」，看一眼就知道哪裡是要點。
+</div>
+<p>右邊：經典「<b>倒撲</b>」。黑在紅圈處下一子，白只能提，提完後黑回提<b>三顆白</b>！</p>`,
+        boardSize: 7, mode: 'problem',
+        setup: [[1,1,1],[2,1,1],[3,1,1],[3,2,1],[3,3,1],[1,2,2],[1,3,2],[2,3,2],[2,2,2]],
+        solution: [[1,4,1]],
+        hint: '在白棋下方的氣下一手，白只剩 1 氣...', xp: 60
+      },
+      {
+        id: 'l3_5', title: '攻擊與防守的平衡',
+        text: `<h3>⚖️ 棋是雙人遊戲，不只是自己擴張</h3>
+<p>新手常見錯誤：只顧自己圍地，不管對方在做什麼。結果：<b>對方圍得比你還大</b>！</p>
+<div class="key-point">
+⚖️ <b>核心觀念：「每下一手，要同時對自己有利、對對方有害」。</b><br>
+最棒的一手 = 自己擴張 + 限制對方
+</div>
+<p><b>攻擊的目的不是殺棋！</b>而是：</p>
+<ol>
+<li><b>逼對方逃跑</b>，自己順勢圍地</li>
+<li><b>建立外勢</b>（厚味），影響全局</li>
+<li>萬一對方逃不出來才殺棋（殺棋是順便的）</li>
+</ol>
+<div class="tip">
+💡 <b>判斷強弱：</b><br>
+看到棋子，先問「這群有幾口氣？能不能做兩眼？」<br>
+弱棋 = 氣少、未做活 → 可以追<br>
+強棋 = 氣多、已活或近活 → 不要硬碰
+</div>
+<p><b>防守原則：</b></p>
+<ul>
+<li>被攻擊時，先<b>逃出包圍圈</b>（往空闊處跑）</li>
+<li>盡量<b>連回大本營</b>（自己的厚勢/活棋）</li>
+<li>實在跑不掉就<b>就地做活</b>（做兩眼）</li>
+</ul>
+<p>右邊：白的一顆掛角孤子，黑可以攻擊它（夾擊），同時擴大自己的左邊勢力。</p>`,
+        boardSize: 13, mode: 'demo',
+        setup: [[3,3,1],[3,9,1],[5,3,2]],
+        highlight: [[7,3,'orange']],
+        hint: '黑在橘框「夾」白孤棋=攻守兼備', xp: 55
+      }
+    ]
+  },
+  {
+    id: 'ch4', title: '第四章 · 棋師', rank: '進階 5K-1D',
+    emoji: '🧑‍🎓', desc: '想衝段位？這章教你高手必備的「全局判斷」。',
+    lessons: [
+      {
+        id: 'l4_1', title: '厚薄判斷：什麼是「厚味」？',
+        text: `<h3>💪 厚 = 牢不可破的力量</h3>
+<p>進階棋手最常掛在嘴邊的詞：「<b>厚</b>」與「<b>薄</b>」。</p>
+<div class="key-point">
+💪 <b>厚味（厚勢）：</b>一群已經做活（或近乎做活）的<b>外向</b>棋子，沒有缺陷，可以影響整個區域。<br>
+🪶 <b>薄棋：</b>有缺陷（斷點、氣少、未做活）容易被攻擊的棋。
+</div>
+<p><b>厚味的價值：</b></p>
+<ul>
+<li><b>不能直接換算成地</b>，厚味不是地</li>
+<li>但能<b>用來攻擊對方孤棋</b>，攻擊中順手圍地</li>
+<li>影響範圍 = 大約厚味前方<b>3-4 路</b>遠</li>
+</ul>
+<div class="warn">
+⚠️ <b>厚味最忌：太靠近厚味的地方圍小空。</b><br>
+就像「拿大砲打蚊子」，浪費厚味價值。
+</div>
+<p><b>判斷厚薄的方法：</b></p>
+<ol>
+<li><b>數氣</b>：氣多 = 強</li>
+<li>看<b>斷點</b>：有沒有可被切的地方</li>
+<li>看<b>眼形</b>：是否已經有兩眼/輕鬆做出兩眼</li>
+<li>看<b>方向</b>：朝外發展 = 厚味；困在裡面 = 即使活也沒效率</li>
+</ol>
+<p>右邊：黑棋在左下形成厚味（堅固外勢），現在應該用這個厚味<b>遠距離夾攻</b>白的孤棋，而不是再圍地。</p>`,
+        boardSize: 13, mode: 'demo',
+        setup: [
+          [2,9,1],[3,9,1],[4,9,1],[2,10,1],[3,10,1],
+          [3,3,1],[9,3,2],[5,9,2]
+        ],
+        hint: '左下黑形成厚勢，向右上發揮', xp: 60
+      },
+      {
+        id: 'l4_2', title: '死活進階：常見殺棋手法',
+        text: `<h3>🗡️ 殺棋必備八個基本型</h3>
+<p>進階棋手要熟悉的死活基本型：</p>
+<div class="key-point">
+🗡️ <b>八個必記殺棋形：</b><br>
+1. <b>直三、彎三</b>：點中間殺<br>
+2. <b>丁四、刀五</b>：點中間殺<br>
+3. <b>方四</b>：不用點，本身就死<br>
+4. <b>板六</b>：守方先下能活，攻方先下殺<br>
+5. <b>梅花六</b>：基本能活<br>
+6. <b>聚殺</b>：把對方擠成不能做兩眼的形狀
+</div>
+<p><b>殺棋三步驟：</b></p>
+<ol>
+<li><b>計算空間</b>：對方有幾個空點</li>
+<li><b>找要點</b>：對方做兩眼的關鍵點（通常是空間的「<b>中心</b>」）</li>
+<li><b>連續手段</b>：點完還要算後續變化</li>
+</ol>
+<div class="tip">
+💡 <b>口訣：「敵之要點，即我之要點」</b><br>
+對方要在哪做眼，你就先下哪。
+</div>
+<p><b>常見錯誤：</b>看到對方一群棋就急著「<b>緊外氣</b>」，結果裡面被做出兩眼。<br>
+<b>正確順序：先點要點（破眼），再緊外氣。</b></p>
+<p>右邊：白圍出「丁四」形狀。輪到黑（攻方）。下在丁字的中心點殺死！</p>`,
+        boardSize: 7, mode: 'problem',
+        setup: [
+          [1,1,2],[2,1,2],[3,1,2],[4,1,2],
+          [1,0,2],[4,0,2],
+          [0,2,1],[1,2,1],[2,2,1],[3,2,1],[4,2,1],[5,2,1]
+        ],
+        solution: [[2,0,1],[3,0,1]],
+        hint: '丁四的中央點，下中間殺', xp: 70
+      },
+      {
+        id: 'l4_3', title: '收官計算：細節決定勝負',
+        text: `<h3>🧮 終盤一目兩目都重要</h3>
+<p>「<b>收官</b>」= 棋盤地盤大致確定後，雙方在邊界互相搶最後幾目的階段。</p>
+<div class="key-point">
+🧮 <b>收官的價值排序：</b><br>
+1. <b>雙先</b>：自己下了還能繼續先手 = 最大<br>
+2. <b>先手</b>：對方必須應的官 = 次大<br>
+3. <b>後手</b>：自己下完換對方先手 = 最小
+</div>
+<p><b>計算大小的方法：</b></p>
+<p>看一個官子點：「<b>我下 vs 對方下</b>」，地盤差值就是這個官子的價值。例如：</p>
+<ul>
+<li>我下這裡：我 +3 目</li>
+<li>對方下這裡：他 +2 目，我 -1 目</li>
+<li>價值 = 3 - (-2) = 5 目（雙方差 5 目）</li>
+</ul>
+<div class="warn">
+⚠️ <b>新手收官常見錯誤：</b><br>
+1. 只看自己賺幾目，沒算對方損失<br>
+2. 急著下小官，放掉大官<br>
+3. 對方先手的官沒應，被連續便宜
+</div>
+<p><b>口訣：</b></p>
+<ol>
+<li><b>先下「雙先」</b>（自己下完還是先手）</li>
+<li>再下「<b>對方先手、自己後手</b>」（不應就吃虧）</li>
+<li>再下「<b>大後手</b>」（價值大但對方不應）</li>
+<li>最後處理小官</li>
+</ol>
+<p><b>進階建議：</b>看陳奕廷《<b>大局觀</b>》或 韓國《<b>御城圍棋</b>》系列棋書。</p>`,
+        boardSize: 9, mode: 'demo',
+        setup: [],
+        hint: '收官能力 = 段位分水嶺', xp: 65
+      },
+      {
+        id: 'l4_4', title: '形勢判斷：算清局面才知道下哪',
+        text: `<h3>📊 中盤每隔 20-30 手要判斷一次</h3>
+<p>高手與業餘的關鍵差別：高手會<b>數地</b>，知道自己領先還是落後，再決定戰術。</p>
+<div class="key-point">
+📊 <b>形勢判斷三步驟：</b><br>
+1. <b>數確定地</b>：雙方各圍多少（含已活的孤棋附近）<br>
+2. <b>估計模樣</b>：未確定的「大空」價值打折（通常打 7-8 折）<br>
+3. <b>算淨差</b>：加上貼目（黑要勝 6.5 目以上才算贏）
+</div>
+<p><b>什麼時候要判斷形勢？</b></p>
+<ul>
+<li>布局結束時（大約第 40-60 手）</li>
+<li>中盤戰鬥告一段落時</li>
+<li>對方提出大型轉換時（要不要交換）</li>
+<li>進入收官前</li>
+</ul>
+<p><b>領先 vs 落後的不同戰術：</b></p>
+<div class="tip">
+🐢 <b>領先時：</b>「<b>消極策略</b>」——簡化局面，不打架，把領先安全帶到終盤。<br>
+🐅 <b>落後時：</b>「<b>勝負手</b>」——主動製造混亂，賭一把翻盤機會。<br>
+<b>絕對禁忌：</b>領先時自己亂衝、落後時還按部就班下。
+</div>
+<p><b>學形勢判斷：</b>看職業對局解說 + 自己每次下完棋用 AI 復盤對照。</p>`,
+        boardSize: 13, mode: 'demo',
+        setup: [],
+        hint: '形勢判斷 = 進階必修', xp: 70
+      }
+    ]
+  },
+  {
+    id: 'ch5', title: '第五章 · 棋仙', rank: '專家 1D+',
+    emoji: '🧙', desc: '段位以上的世界——這章是地圖，告訴你進階路徑。',
+    lessons: [
+      {
+        id: 'l5_1', title: '全局觀：每一手影響整盤',
+        text: `<h3>🌐 從局部思維到全局思維</h3>
+<p>業餘段位以上，<b>最大的瓶頸</b>不是死活、不是手筋，而是「<b>全局感</b>」。</p>
+<div class="key-point">
+🌐 <b>什麼是全局觀？</b><br>
+能夠在下每一手前，<b>同時看到</b>：<br>
+1. 這手在局部好不好<br>
+2. 對<b>其他角</b>的影響<br>
+3. 對<b>中央模樣</b>的影響<br>
+4. 對<b>後續戰鬥方向</b>的影響
+</div>
+<p><b>培養全局觀的方法：</b></p>
+<ol>
+<li><b>打譜</b>：每天看 1 局職業棋（推薦李昌鎬、古力、AlphaGo、申真諝）</li>
+<li><b>不看解說，自己猜下一手</b>，再對照</li>
+<li>每 20 手停下來，<b>自己做形勢判斷</b></li>
+<li>看完整盤，總結「這盤的<b>關鍵手</b>是哪幾手」</li>
+</ol>
+<div class="tip">
+💡 <b>AI 時代的學法：</b>用 KataGo / Leela Zero 復盤自己的棋。<br>
+看自己每一手 AI 給的分數（勝率變化），找出<b>失分最多的 3 手</b>，研究正確下法。
+</div>
+<p>本章後面幾課都是<b>讀物式</b>的概念引導，不再有題目。<br>真正進階要靠：<b>大量打譜 + AI 復盤 + 找老師指導</b>。</p>`,
+        boardSize: 9, mode: 'demo', setup: [], xp: 80
+      },
+      {
+        id: 'l5_2', title: '大模樣作戰：用厚味當引擎',
+        text: `<h3>🏯 「模樣派」vs「實地派」</h3>
+<p>進入段位後會發現有兩種風格：</p>
+<div class="key-point">
+🏯 <b>模樣派（外向）：</b>布局時下星位、外勢點，建立大模樣<br>
+💰 <b>實地派（內向）：</b>直接佔角搶實地，先賺再說
+</div>
+<p><b>大模樣派的核心思路：</b></p>
+<ol>
+<li>布局取外勢（星位、二間高夾、大飛守等）</li>
+<li>中盤<b>引誘對方打入</b>大模樣</li>
+<li>對方打入時，<b>用厚味攻擊孤棋</b>，攻擊中圍地</li>
+<li>把整個區域變成大空</li>
+</ol>
+<div class="warn">
+⚠️ <b>模樣派的風險：</b>對方深入打入後，如果你殺不死、攻不出便宜 → 你的模樣崩塌，反而落後。<br>
+所以模樣派<b>戰鬥力必須強</b>。
+</div>
+<p><b>代表棋手：</b>武宮正樹（宇宙流）、徐奉洙、現代的時越。</p>
+<p><b>實地派代表：</b>李昌鎬（穩健派祖師）、陳耀燁。</p>
+<p>新手建議從<b>實地派</b>學起，比較不容易翻車。<br>等中段以上再嘗試模樣派。</p>`,
+        boardSize: 9, mode: 'demo', setup: [], xp: 80
+      },
+      {
+        id: 'l5_3', title: '騙著與識破',
+        text: `<h3>🎭 高手會「騙」嗎？</h3>
+<p>「<b>騙著</b>」= 嚴格說不正確、但是<b>對方應錯就會吃虧</b>的下法。</p>
+<div class="key-point">
+🎭 <b>騙著的特徵：</b><br>
+1. 表面看起來「奇怪」、「不像本手」<br>
+2. 對方按正常下法應 → 你吃虧<br>
+3. 對方按<b>直覺</b>應 → 對方吃虧<br>
+4. 真正的正解只有 1 條路徑，且不直觀
+</div>
+<p><b>常見騙著場景：</b></p>
+<ul>
+<li>定石中突然偏離 → 對方還按定石下會吃虧</li>
+<li>看似自緊氣 → 其實有<b>後續好手</b></li>
+<li>送子 → 對方提了反而崩潰</li>
+</ul>
+<p><b>如何識破騙著？</b></p>
+<ol>
+<li>遇到<b>「直覺很怪」的一手</b>，<u>不要直覺反應</u></li>
+<li>多花時間<b>讀變化</b>，把每個應法的後續都算清楚</li>
+<li>查棋書/AI 確認此處的正確應法</li>
+<li>下完棋復盤，下次就會了</li>
+</ol>
+<div class="tip">
+💡 <b>原則：</b>騙著在<b>業餘有效，職業沒用</b>。<br>
+因為職業會把每一條變化都算清楚，騙不到。<br>
+業餘想升段：<b>不靠騙</b>，靠正手。
+</div>
+<p><b>推薦書：</b>《圍棋騙著與正解》、《李昌鎬騙著大全》。</p>`,
+        boardSize: 9, mode: 'demo', setup: [], xp: 85
+      },
+      {
+        id: 'l5_4', title: '職業思路概要',
+        text: `<h3>🏆 業餘 vs 職業差在哪？</h3>
+<p>業餘很努力可以到業餘 6 段（強業餘），但<b>業餘 6 段 vs 職業 9 段</b>仍然天差地遠。差距在：</p>
+<div class="key-point">
+🏆 <b>職業棋手的三大特質：</b><br>
+1. <b>讀棋深度</b>：能算 30+ 手變化，業餘最多 10 手<br>
+2. <b>形勢判斷精度</b>：誤差 ±2 目以內，業餘 ±10 目<br>
+3. <b>大局思維</b>：每一手都有戰略目的，不浪費
+</div>
+<p><b>職業常用思考模式（業餘可學）：</b></p>
+<ol>
+<li><b>「為什麼這手？」</b>：每下一手都要說得出 3 個以上理由</li>
+<li><b>「對方最強應法是什麼？」</b>：不要預設對方會應錯</li>
+<li><b>「我這手最壞會怎樣？」</b>：算清最壞結果，承受得了再下</li>
+<li><b>「我輸了的話從哪一手開始輸？」</b>：復盤時找關鍵敗著</li>
+</ol>
+<p><b>AI 時代的職業：</b></p>
+<ul>
+<li>幾乎所有職業都用 KataGo / Leela 訓練</li>
+<li>新定石、新布局每月在誕生（AI 推翻了很多傳統定石）</li>
+<li>「AI 一手」= 過去無人下的位置，現在頂尖棋手都會了</li>
+</ul>
+<div class="tip">
+💡 <b>業餘升段最快的路：</b><br>
+1. 每天 30 分鐘做<b>死活題</b>（強化計算）<br>
+2. 每週<b>復盤 1 局</b>自己的棋（找錯）<br>
+3. 每月<b>打 5 局職業譜</b>（學構思）<br>
+4. 加一個<b>圍棋老師/同學社群</b>（持續被指導）
+</div>`,
+        boardSize: 9, mode: 'demo', setup: [], xp: 90
+      },
+      {
+        id: 'l5_5', title: '推薦學習路徑',
+        text: `<h3>🗺️ 從新手到段位的完整路徑</h3>
+<div class="key-point">
+🗺️ <b>0-1 年（新手 → 10 級）：</b><br>
+• 學完本遊戲所有課程<br>
+• 每天 10 道<b>死活題</b><br>
+• 每週<b>對弈 5 局</b>（9 路 → 13 路）<br>
+• 線上推薦：<b>BadukPop</b>、<b>圍棋少年</b> APP
+</div>
+<div class="key-point">
+🗺️ <b>1-3 年（10 級 → 1 段）：</b><br>
+• 開始打<b>19 路</b>正式對局（OGS、野狐、Tygem）<br>
+• 學<b>基本定石</b>（30-50 個常用）<br>
+• 看<b>1 本死活書</b>（《死活大全》入門篇）<br>
+• 每週<b>復盤</b> 1 局
+</div>
+<div class="key-point">
+🗺️ <b>3-5 年（1 段 → 5 段）：</b><br>
+• <b>系統學手筋</b>（《手筋大全》6 冊）<br>
+• <b>打譜</b>：每天 30 分鐘職業譜<br>
+• 找老師<b>指導棋</b>（1-2 週 1 局）<br>
+• AI 復盤<b>每一局</b>
+</div>
+<div class="key-point">
+🗺️ <b>5 年+（業餘高段）：</b><br>
+• 進階死活（<b>《玄玄棋經》</b>、《官子譜》）<br>
+• 研究<b>申真諝、辜梓豪</b>等現代頂尖棋譜<br>
+• 參加業餘賽事<br>
+• 如果想拚職業：找<b>道場</b>、職業教練系統訓練
+</div>
+<p>—</p>
+<p><b>🦊 圍圍師父最後的話：</b></p>
+<p>圍棋不是 1 個月的事，是<b>一輩子</b>的興趣。每個階段都有新的風景。<br>
+<b>不要急，慢慢來，享受過程</b>。每一盤都是新的學習。</p>
+<p><b>祝你在圍棋的世界裡，找到屬於自己的樂趣與成長！</b></p>`,
+        boardSize: 9, mode: 'demo', setup: [], xp: 100
+      }
+    ]
+  }
+];
+
+/* ===================================================================
+   題庫：死活、手筋、提子
+   =================================================================== */
+const PROBLEMS = [
+  // 第一級：提子題
+  { id:'p1', tag:'提子', title:'吃一子（初級）', size:7,
+    setup:[[3,3,2],[2,3,1],[4,3,1],[3,2,1]],
+    solution:[[3,4,1]],
+    prompt:'黑棋在哪一手能吃掉白棋？', xp:15 },
+  { id:'p2', tag:'提子', title:'吃二子', size:7,
+    setup:[[2,3,2],[3,3,2],[1,3,1],[4,3,1],[2,2,1],[3,2,1]],
+    solution:[[2,4,1],[3,4,1]],
+    prompt:'白棋兩子只剩 2 氣，黑哪手能打吃？', xp:20 },
+  { id:'p3', tag:'提子', title:'雙打吃', size:7,
+    setup:[[2,2,2],[4,2,2],[3,3,1]],
+    solution:[[3,2,1]],
+    prompt:'黑一手同時打吃兩顆白子！', xp:25 },
+  // 第二級：救棋題
+  { id:'p4', tag:'逃跑', title:'救出被打吃的棋', size:7,
+    setup:[[3,3,1],[2,3,2],[4,3,2],[3,2,2]],
+    solution:[[3,4,1]],
+    prompt:'黑棋只剩 1 氣（被打吃），怎麼救？', xp:20 },
+  { id:'p5', tag:'逃跑', title:'連回援軍', size:9,
+    setup:[[4,4,1],[3,4,2],[5,4,2],[4,3,2],[4,6,1],[4,7,1]],
+    solution:[[4,5,1]],
+    prompt:'被圍住的黑子，怎麼連回下面的援軍？', xp:25 },
+  // 第三級：切斷題
+  { id:'p6', tag:'切斷', title:'斷開敵人', size:7,
+    setup:[[2,3,2],[3,2,2]],
+    solution:[[3,3,1],[2,2,1]],
+    prompt:'白兩子斜角排列，黑哪手能切斷？', xp:25 },
+  { id:'p7', tag:'切斷', title:'切後追殺', size:9,
+    setup:[[3,3,2],[4,4,2],[2,3,1],[3,2,1],[4,3,1],[3,4,1]],
+    solution:[[4,3,1]],
+    prompt:'切斷後同時打吃！', xp:30 },
+  // 第四級：死活題
+  { id:'p8', tag:'死活', title:'直三殺', size:7,
+    setup:[[0,2,1],[1,2,1],[2,2,1],[3,2,1],[4,2,1],[0,1,2],[1,1,2],[2,1,2],[3,1,2],[4,1,2],[0,0,2],[4,0,2]],
+    solution:[[2,0,1]],
+    prompt:'白圍出「直三」（3 點空），黑點哪殺白？', xp:35 },
+  { id:'p9', tag:'死活', title:'彎三殺', size:7,
+    setup:[[0,3,1],[1,3,1],[2,3,1],[3,3,1],[2,2,1],[3,2,1],[0,2,2],[1,2,2],[2,1,2],[3,1,2],[0,1,2],[1,1,2],[0,0,2],[1,0,2]],
+    solution:[[2,0,1]],
+    prompt:'白「彎三」形，黑點要害', xp:40 },
+  { id:'p10', tag:'死活', title:'救活自己', size:7,
+    setup:[[0,2,1],[1,2,1],[2,2,1],[3,2,1],[0,1,1],[3,1,1],[0,0,1]],
+    solution:[[2,0,1],[1,0,1]],
+    prompt:'黑棋在角落，下哪能做出兩眼活？', xp:50 },
+  // 第五級：手筋題
+  { id:'p11', tag:'手筋', title:'倒撲', size:7,
+    setup:[[1,1,1],[2,1,1],[3,1,1],[3,2,1],[3,3,1],[1,2,2],[1,3,2],[2,3,2],[2,2,2]],
+    solution:[[1,4,1]],
+    prompt:'下一子讓白吃了反而會被回吃更多！', xp:55 },
+  { id:'p12', tag:'手筋', title:'撲入殺', size:7,
+    setup:[[1,1,2],[2,1,2],[3,1,2],[1,2,2],[3,2,2],[1,3,2],[2,3,2],[3,3,2],[0,1,1],[0,2,1],[0,3,1],[4,1,1],[4,2,1],[4,3,1],[1,0,1],[2,0,1],[3,0,1],[1,4,1],[2,4,1],[3,4,1]],
+    solution:[[2,2,1]],
+    prompt:'白圍出方四空間，黑撲入殺！', xp:60 },
+  // 第六級：對殺
+  { id:'p13', tag:'對殺', title:'數氣對殺', size:7,
+    setup:[[1,2,1],[2,2,1],[3,2,1],[1,3,2],[2,3,2],[3,3,2],[0,3,1],[4,3,1],[2,4,1]],
+    solution:[[1,4,1],[3,4,1]],
+    prompt:'黑白對殺，黑哪手贏？', xp:55 },
+  { id:'p14', tag:'對殺', title:'先手對殺', size:9,
+    setup:[[3,3,1],[4,3,1],[3,4,2],[4,4,2],[2,3,1],[5,3,1],[3,5,2],[4,5,2],[2,4,2],[5,4,2]],
+    solution:[[3,2,1],[4,2,1]],
+    prompt:'雙方氣數相同，先手才能贏！', xp:60 },
+  // 第七級：綜合
+  { id:'p15', tag:'綜合', title:'雙打吃陷阱', size:9,
+    setup:[[3,3,2],[5,3,2],[4,4,1]],
+    solution:[[4,3,1]],
+    prompt:'一手同時打吃兩邊！', xp:40 },
+  { id:'p16', tag:'死活', title:'點眼破活', size:7,
+    setup:[[0,2,1],[1,2,1],[2,2,1],[3,2,1],[4,2,1],[5,2,1],[0,1,2],[1,1,2],[2,1,2],[3,1,2],[4,1,2],[5,1,2],[0,0,2],[5,0,2]],
+    solution:[[2,0,1]],
+    prompt:'白只有「直四」空間，黑點殺', xp:65 },
+  { id:'p17', tag:'手筋', title:'扳的妙用', size:9,
+    setup:[[2,3,1],[3,3,1],[4,3,1],[2,5,2],[3,5,2],[4,5,2]],
+    solution:[[2,4,1],[4,4,1]],
+    prompt:'用「扳」擴張勢力！', xp:35 },
+  { id:'p18', tag:'死活', title:'眼形要點', size:7,
+    setup:[[0,3,1],[1,3,1],[2,3,1],[3,3,1],[4,3,1],[1,2,2],[2,2,2],[3,2,2],[1,1,2],[3,1,2],[1,0,2],[2,0,2],[3,0,2]],
+    solution:[[2,1,1]],
+    prompt:'白棋方塊中心點是死活要點！', xp:65 },
+  { id:'p19', tag:'手筋', title:'夾的攻擊', size:9,
+    setup:[[5,2,2],[3,3,1]],
+    solution:[[6,2,1],[4,2,1]],
+    prompt:'黑用「夾」攻擊白的孤棋', xp:40 },
+  { id:'p20', tag:'綜合', title:'征子要算清楚', size:9,
+    setup:[[4,4,2],[4,5,1],[5,4,1]],
+    solution:[[3,4,1]],
+    prompt:'黑開始「征子」（每步打吃讓對方逃不掉）！', xp:50 }
+];
+
+/* ===================================================================
+   UI 渲染與互動
+   =================================================================== */
+function renderChapterMap() {
+  const c = document.getElementById('chapterMap');
+  c.innerHTML = '';
+  let unlocked = true;
+  for (let i = 0; i < CHAPTERS.length; i++) {
+    const ch = CHAPTERS[i];
+    const done = ch.lessons.filter(l => STATE.lessonsDone[l.id]).length;
+    const total = ch.lessons.length;
+    const pct = (done / total) * 100;
+    const isLocked = !unlocked && i > 0;
+    const allDone = done === total;
+    const card = document.createElement('div');
+    card.className = 'chapter-card' + (isLocked ? ' locked' : '');
+    card.innerHTML = `
+      <div class="ch-badge">${allDone ? '✅' : ch.emoji}</div>
+      <div class="ch-num">第 ${i+1} 章</div>
+      <div class="ch-title">${ch.title.split('·')[1] ? ch.title.split('·')[1].trim() : ch.title}</div>
+      <div class="ch-rank">${ch.rank}</div>
+      <div class="ch-desc">${ch.desc}</div>
+      <div class="ch-progress"><div class="ch-progress-fill" style="width:${pct}%"></div></div>
+      <small style="color:var(--text-soft)">${done} / ${total} 課完成</small>
+    `;
+    if (!isLocked) {
+      card.onclick = () => showChapterLessons(ch);
+    }
+    c.appendChild(card);
+    if (!allDone) unlocked = false;
+  }
+}
+
+function showChapterLessons(ch) {
+  // 顯示課程清單彈窗（用簡單的方式：在地圖上加 inline）
+  const exists = document.getElementById('lessonPicker');
+  if (exists) exists.remove();
+  const picker = document.createElement('div');
+  picker.id = 'lessonPicker';
+  picker.className = 'card';
+  picker.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:1000; max-width:90%; width:500px; max-height:80vh; overflow:auto;';
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h3>${ch.title}</h3>
+    <button class="back-btn" onclick="document.getElementById('lessonPicker').remove()">✕</button>
+  </div>`;
+  for (const l of ch.lessons) {
+    const done = STATE.lessonsDone[l.id];
+    html += `<div class="problem-card ${done ? 'solved' : ''}" onclick="openLesson('${l.id}'); document.getElementById('lessonPicker').remove();">
+      <div class="p-num">${done ? '✅ 已完成' : '未完成'}</div>
+      <div class="p-title">${l.title}</div>
+      <div class="p-tag">+${l.xp} XP</div>
+    </div>`;
+  }
+  picker.innerHTML = html;
+  document.body.appendChild(picker);
+}
+
+let lessonEngine = null, lessonRenderer = null, currentLesson = null;
+function openLesson(lid) {
+  let lesson = null, chapter = null;
+  for (const ch of CHAPTERS) {
+    for (const l of ch.lessons) {
+      if (l.id === lid) { lesson = l; chapter = ch; break; }
+    }
+    if (lesson) break;
+  }
+  if (!lesson) return;
+  currentLesson = lesson;
+  document.getElementById('lessonTitle').textContent = lesson.title;
+  document.getElementById('lessonText').innerHTML = lesson.text;
+  document.getElementById('problemResult').style.display = 'none';
+  showScreen('lesson');
+  // 棋盤
+  lessonEngine = new GoEngine(lesson.boardSize || 9);
+  if (lesson.setup) {
+    for (const [x, y, c] of lesson.setup) {
+      lessonEngine.board[lessonEngine.idx(x, y)] = c;
+    }
+  }
+  const opts = { showCoord: STATE.settings.coord, cute: STATE.settings.cute, highlight: lesson.highlight || [] };
+  if (lesson.mode === 'problem') {
+    opts.onClick = (x, y) => handleLessonProblemClick(x, y);
+    document.getElementById('lessonStatus').textContent = '輪到你：黑棋';
+  } else if (lesson.mode === 'freeplay') {
+    opts.onClick = (x, y) => handleLessonFreeClick(x, y);
+    document.getElementById('lessonStatus').textContent = '隨意點點看～';
+  } else {
+    opts.onClick = null;
+    document.getElementById('lessonStatus').textContent = '示範棋形';
+  }
+  lessonRenderer = new BoardRenderer(document.getElementById('lessonBoard'), lessonEngine, opts);
+}
+
+let lessonFreeCount = 0;
+function handleLessonFreeClick(x, y) {
+  const res = lessonEngine.tryMove(x, y, lessonEngine.turn);
+  if (res.ok) {
+    playSound('place');
+    if (res.captured.length) playSound('capture');
+    lessonFreeCount++;
+    lessonRenderer.draw();
+    if (currentLesson.target === 'place_5_stones' && lessonFreeCount >= 5 && !STATE.lessonsDone[currentLesson.id]) {
+      completeLesson();
+    }
+  }
+}
+
+function handleLessonProblemClick(x, y) {
+  const sol = currentLesson.solution;
+  const isSol = sol.some(([sx, sy]) => sx === x && sy === y);
+  const res = lessonEngine.tryMove(x, y, 1);
+  if (res.ok) {
+    playSound('place');
+    if (res.captured.length) playSound('capture');
+    lessonRenderer.draw();
+    const r = document.getElementById('problemResult');
+    if (isSol) {
+      r.className = 'problem-result success';
+      r.innerHTML = `🎉 <b>答對了！</b><br>${currentLesson.successMsg || '完美！繼續加油～'}`;
+      playSound('win');
+      if (currentLesson.achievement) unlockBadge(currentLesson.achievement);
+      if (!STATE.lessonsDone[currentLesson.id]) {
+        completeLesson();
+      }
+    } else {
+      r.className = 'problem-result fail';
+      r.innerHTML = `😅 <b>不太對喔～</b>提示：${currentLesson.hint || '再想想看！'}<br>點「重來」再試一次！`;
+      playSound('wrong');
+    }
+  }
+}
+
+function completeLesson() {
+  STATE.lessonsDone[currentLesson.id] = Date.now();
+  gainXP(currentLesson.xp || 20);
+  // 首次完成第一課
+  if (Object.keys(STATE.lessonsDone).length === 1) unlockBadge('first_step');
+  // 各章完成檢查
+  for (let i = 0; i < CHAPTERS.length; i++) {
+    const ch = CHAPTERS[i];
+    if (ch.lessons.every(l => STATE.lessonsDone[l.id])) {
+      unlockBadge(`ch${i+1}_done`);
+    }
+  }
+  // 全部完成
+  if (CHAPTERS.every(ch => ch.lessons.every(l => STATE.lessonsDone[l.id]))) {
+    unlockBadge('all_lessons');
+  }
+  checkStreak();
+  save();
+}
+
+function lessonBoardReset() {
+  openLesson(currentLesson.id);
+}
+function lessonBoardHint() {
+  alert('💡 提示：' + (currentLesson.hint || '仔細觀察棋盤上的氣！'));
+}
+function lessonNext() {
+  // 找下一課
+  let found = false;
+  for (const ch of CHAPTERS) {
+    for (let i = 0; i < ch.lessons.length; i++) {
+      if (found) {
+        openLesson(ch.lessons[i].id);
+        return;
+      }
+      if (ch.lessons[i].id === currentLesson.id) { found = true; }
+    }
+  }
+  showScreen('map');
+  renderChapterMap();
+}
+
+/* ===================================================================
+   題庫
+   =================================================================== */
+function renderProblemList() {
+  const c = document.getElementById('problemList');
+  c.innerHTML = '';
+  for (const p of PROBLEMS) {
+    const solved = STATE.problemsDone[p.id];
+    const card = document.createElement('div');
+    card.className = 'problem-card' + (solved ? ' solved' : '');
+    card.innerHTML = `
+      <div class="p-num">${solved ? '✅ 已解' : `題 ${p.id.replace('p','')}`}</div>
+      <div class="p-title">${p.title}</div>
+      <div class="p-tag">${p.tag} · +${p.xp} XP</div>
+    `;
+    card.onclick = () => openProblem(p);
+    c.appendChild(card);
+  }
+}
+
+let problemEngine = null, problemRenderer = null, currentProblem = null;
+function openProblem(p) {
+  currentProblem = p;
+  document.getElementById('problemTitle').textContent = p.title;
+  document.getElementById('problemPrompt').textContent = p.prompt;
+  document.getElementById('problemPlayResult').style.display = 'none';
+  showScreen('problem-play');
+  problemEngine = new GoEngine(p.size);
+  for (const [x, y, c] of p.setup) {
+    problemEngine.board[problemEngine.idx(x, y)] = c;
+  }
+  problemRenderer = new BoardRenderer(document.getElementById('problemBoard'), problemEngine, {
+    showCoord: STATE.settings.coord, cute: STATE.settings.cute,
+    onClick: (x, y) => handleProblemClick(x, y)
+  });
+}
+
+function handleProblemClick(x, y) {
+  const sol = currentProblem.solution;
+  const isSol = sol.some(([sx, sy]) => sx === x && sy === y);
+  const res = problemEngine.tryMove(x, y, 1);
+  if (res.ok) {
+    playSound('place');
+    if (res.captured.length) playSound('capture');
+    problemRenderer.draw();
+    const r = document.getElementById('problemPlayResult');
+    if (isSol) {
+      r.className = 'problem-result success';
+      r.innerHTML = '🎉 <b>正確！這就是最佳手！</b>';
+      playSound('win');
+      if (!STATE.problemsDone[currentProblem.id]) {
+        STATE.problemsDone[currentProblem.id] = Date.now();
+        gainXP(currentProblem.xp);
+        const cnt = Object.keys(STATE.problemsDone).length;
+        if (cnt >= 10) unlockBadge('p10_solved');
+        if (cnt >= 30) unlockBadge('p30_solved');
+        checkStreak();
+        save();
+      }
+    } else {
+      r.className = 'problem-result fail';
+      r.innerHTML = '😅 <b>再想想！</b>這手不是最佳。點「重來」再試一次，或點「看解答」。';
+      playSound('wrong');
+    }
+  }
+}
+function problemReset() { openProblem(currentProblem); }
+function problemShowSolution() {
+  openProblem(currentProblem);
+  const [sx, sy] = currentProblem.solution[0];
+  problemRenderer.opts.highlight = [[sx, sy, 'red']];
+  problemRenderer.draw();
+  alert('正確的下法用紅框標示！');
+}
+
+/* ===================================================================
+   對弈
+   =================================================================== */
+let playEngine = null, playRenderer = null, gameStarted = false;
+function startNewGame() {
+  const size = parseInt(document.getElementById('playSize').value);
+  playEngine = new GoEngine(size);
+  gameStarted = true;
+  document.getElementById('playStatus').textContent = '輪到你：黑棋';
+  document.getElementById('capB').textContent = '0';
+  document.getElementById('capW').textContent = '0';
+  playRenderer = new BoardRenderer(document.getElementById('playBoard'), playEngine, {
+    showCoord: STATE.settings.coord, cute: STATE.settings.cute,
+    onClick: (x, y) => handlePlayClick(x, y)
+  });
+}
+function handlePlayClick(x, y) {
+  if (!gameStarted || playEngine.turn !== 1) return;
+  const res = playEngine.tryMove(x, y, 1);
+  if (res.ok) {
+    playSound('place');
+    if (res.captured.length) { playSound('capture'); }
+    document.getElementById('capB').textContent = playEngine.captures[1];
+    playRenderer.draw();
+    document.getElementById('playStatus').textContent = '電腦思考中...';
+    setTimeout(aiTurn, 400);
+  } else {
+    document.getElementById('playStatus').textContent = '不能下這裡：' + res.reason;
+  }
+}
+function aiTurn() {
+  if (!gameStarted || playEngine.turn !== 2) return;
+  const level = parseInt(document.getElementById('aiLevel').value);
+  const move = aiPickMove(playEngine, 2, level);
+  if (move.pass) {
+    playEngine.pass();
+    document.getElementById('playStatus').textContent = '電腦虛手（PASS）。你也虛手就結束！';
+  } else {
+    const res = playEngine.tryMove(move.x, move.y, 2);
+    if (res.ok) {
+      playSound('place');
+      if (res.captured.length) playSound('capture');
+      document.getElementById('capW').textContent = playEngine.captures[2];
+      document.getElementById('playStatus').textContent = '輪到你：黑棋';
+    }
+  }
+  playRenderer.draw();
+  // 雙方都 pass 結束
+  if (playEngine.passes >= 2) endGame();
+}
+function playerPass() {
+  if (!gameStarted) return;
+  playEngine.pass();
+  playRenderer.draw();
+  if (playEngine.passes >= 2) { endGame(); return; }
+  setTimeout(aiTurn, 400);
+}
+function undoMove() {
+  if (!gameStarted) return;
+  playEngine.undo(); playEngine.undo();
+  playRenderer.draw();
+  document.getElementById('capB').textContent = playEngine.captures[1];
+  document.getElementById('capW').textContent = playEngine.captures[2];
+  document.getElementById('playStatus').textContent = '已悔棋。輪到你：黑棋';
+}
+function resignGame() {
+  if (!gameStarted) return;
+  gameStarted = false;
+  document.getElementById('playStatus').textContent = '你投降了。別氣餒，下次更好！';
+  showFloater('💪 沒關係！\n下次再加油～');
+  playSound('lose');
+  gainXP(5);
+}
+function endGame() {
+  gameStarted = false;
+  const s = playEngine.score();
+  const winner = s.winner;
+  const diff = Math.abs(s.diff).toFixed(1);
+  let msg;
+  if (winner === 'black') {
+    msg = `🎉 恭喜！你贏了！\n黑勝 ${diff} 目\n（黑 ${s.black.toFixed(1)} vs 白 ${s.white.toFixed(1)}）`;
+    playSound('win');
+    const level = parseInt(document.getElementById('aiLevel').value);
+    STATE.aiWins[level] = (STATE.aiWins[level] || 0) + 1;
+    if (level >= 0) unlockBadge('win_ai_easy');
+    if (level >= 2) unlockBadge('win_ai_mid');
+    if (level >= 3) unlockBadge('win_ai_hard');
+    gainXP(100);
+  } else if (winner === 'white') {
+    msg = `😢 你輸了 ${diff} 目，再接再厲！\n（黑 ${s.black.toFixed(1)} vs 白 ${s.white.toFixed(1)}）`;
+    playSound('lose');
+    gainXP(20);
+  } else {
+    msg = `平局！\n（黑 ${s.black.toFixed(1)} vs 白 ${s.white.toFixed(1)}）`;
+    gainXP(30);
+  }
+  document.getElementById('playStatus').textContent = msg.replace(/\n/g, ' ');
+  showFloater(msg);
+  save();
+}
+
+/* ===================================================================
+   沙盒
+   =================================================================== */
+let sandboxEngine = null, sandboxRenderer = null, sandboxColor = 1, sandboxAlt = true;
+function initSandbox() {
+  const size = parseInt(document.getElementById('sandboxSize').value);
+  sandboxEngine = new GoEngine(size);
+  sandboxRenderer = new BoardRenderer(document.getElementById('sandboxBoard'), sandboxEngine, {
+    showCoord: STATE.settings.coord, cute: STATE.settings.cute,
+    onClick: (x, y) => {
+      const res = sandboxEngine.tryMove(x, y, sandboxColor);
+      if (res.ok) {
+        playSound('place');
+        if (res.captured.length) playSound('capture');
+        if (sandboxAlt) {
+          sandboxColor = sandboxColor === 1 ? 2 : 1;
+          document.getElementById('sandboxColor').textContent = sandboxColor === 1 ? '⚫ 現在放黑棋' : '⚪ 現在放白棋';
+        }
+        sandboxRenderer.draw();
+      } else {
+        document.getElementById('sandboxStatus').textContent = res.reason;
+      }
+    }
+  });
+}
+function sandboxClear() { initSandbox(); document.getElementById('sandboxStatus').textContent = '清空完成！'; }
+function sandboxToggleColor() {
+  sandboxColor = sandboxColor === 1 ? 2 : 1;
+  document.getElementById('sandboxColor').textContent = sandboxColor === 1 ? '⚫ 現在放黑棋' : '⚪ 現在放白棋';
+}
+function sandboxAlternate() {
+  sandboxAlt = !sandboxAlt;
+  document.getElementById('sandboxStatus').textContent = sandboxAlt ? '已開啟自動換邊' : '已關閉自動換邊（手動切換顏色）';
+}
+function sandboxScore() {
+  const s = sandboxEngine.score();
+  alert(`📊 算地結果：\n\n黑棋總分：${s.black.toFixed(1)}（地 ${s.blackTerr}）\n白棋總分：${s.white.toFixed(1)}（地 ${s.whiteTerr} + 貼目 6.5）\n\n${s.winner === 'black' ? '黑勝' : s.winner === 'white' ? '白勝' : '平局'} ${Math.abs(s.diff).toFixed(1)} 目`);
+}
+
+/* ===================================================================
+   徽章殿堂
+   =================================================================== */
+function renderBadges() {
+  const c = document.getElementById('badgeGrid');
+  c.innerHTML = '';
+  let unlocked = 0;
+  for (const b of BADGES) {
+    const got = STATE.badges[b.id];
+    if (got) unlocked++;
+    const div = document.createElement('div');
+    div.className = 'badge ' + (got ? 'unlocked' : 'locked');
+    div.innerHTML = `
+      <div class="b-icon">${got ? b.icon : '❓'}</div>
+      <div class="b-name">${got ? b.name : '???'}</div>
+      <div class="b-desc">${b.desc}</div>
+    `;
+    c.appendChild(div);
+  }
+  document.getElementById('badgeCount').textContent = unlocked;
+  document.getElementById('badgeTotal').textContent = BADGES.length;
+}
+
+/* ===================================================================
+   設定
+   =================================================================== */
+function toggleSetting(key) {
+  STATE.settings[key] = !STATE.settings[key];
+  const el = document.getElementById({
+    sound: 'toggleSound', anim: 'toggleAnim', coord: 'toggleCoord', cute: 'toggleCute'
+  }[key]);
+  el.classList.toggle('on', STATE.settings[key]);
+  save();
+  // 重新渲染當前棋盤
+  if (lessonRenderer) { lessonRenderer.opts.showCoord = STATE.settings.coord; lessonRenderer.opts.cute = STATE.settings.cute; lessonRenderer.draw(); }
+  if (problemRenderer) { problemRenderer.opts.showCoord = STATE.settings.coord; problemRenderer.opts.cute = STATE.settings.cute; problemRenderer.draw(); }
+  if (playRenderer) { playRenderer.opts.showCoord = STATE.settings.coord; playRenderer.opts.cute = STATE.settings.cute; playRenderer.draw(); }
+  if (sandboxRenderer) { sandboxRenderer.opts.showCoord = STATE.settings.coord; sandboxRenderer.opts.cute = STATE.settings.cute; sandboxRenderer.draw(); }
+}
+function applySettingToggles() {
+  document.getElementById('toggleSound').classList.toggle('on', STATE.settings.sound);
+  document.getElementById('toggleAnim').classList.toggle('on', STATE.settings.anim);
+  document.getElementById('toggleCoord').classList.toggle('on', STATE.settings.coord);
+  document.getElementById('toggleCute').classList.toggle('on', STATE.settings.cute);
+}
+function resetAll() {
+  localStorage.removeItem('weiqi_adventure_v1');
+  location.reload();
+}
+
+/* ===================================================================
+   主導覽
+   =================================================================== */
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('screen-' + name);
+  if (el) el.classList.add('active');
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    if (b.dataset.screen) b.classList.toggle('active', b.dataset.screen === name);
+  });
+  if (name === 'map') renderChapterMap();
+  if (name === 'problems') renderProblemList();
+  if (name === 'badges') renderBadges();
+  if (name === 'sandbox' && !sandboxEngine) initSandbox();
+}
+
+/* ===================================================================
+   初始化
+   =================================================================== */
+load();
+updateTopbar();
+applySettingToggles();
+renderChapterMap();
+checkStreak();
+
+document.querySelectorAll('.mode-btn[data-screen]').forEach(b => {
+  b.addEventListener('click', () => showScreen(b.dataset.screen));
+});
+
+document.getElementById('playSize').addEventListener('change', () => { if (gameStarted) startNewGame(); });
+document.getElementById('sandboxSize').addEventListener('change', () => initSandbox());
+
+// 防止背景捲動穿透寶箱
+document.getElementById('boxModal').addEventListener('click', e => {
+  if (e.target.id === 'boxModal') closeBox();
+});
+
+// 首次造訪歡迎訊息
+if (STATE.xp === 0 && !STATE.lessonsDone.l1_1) {
+  setTimeout(() => showFloater('🦊 歡迎來到\n圍棋大冒險！'), 600);
+}
+</script>
+</body>
+</html>
