@@ -636,10 +636,10 @@ footer.bottom {
           <option value="19">19 路（高手）</option>
         </select>
         <select id="aiLevel">
-          <option value="0">超級初學（我會放水）</option>
-          <option value="1" selected>初學</option>
-          <option value="2">中級</option>
-          <option value="3">強</option>
+          <option value="0">🐢 烏龜爺爺（會放水）</option>
+          <option value="1" selected>🐵 小猴子（初學者剋星）</option>
+          <option value="2">🦊 狐狸師父（中級）</option>
+          <option value="3">🐉 龍王（最強敵手）</option>
         </select>
         <button onclick="playerPass()">🤝 虛手 PASS</button>
         <button onclick="resignGame()">🏳️ 投降</button>
@@ -965,8 +965,10 @@ function aiPickMove(engine, color, level = 1) {
   const top = moves[0].score;
   const candidates = moves.slice(0, pickRange).filter(m => m.score > top - 10);
   const pick = candidates[Math.floor(Math.random() * candidates.length)];
-  // 若分數太低（局面不利），考慮 pass
-  if (pick.score < -10 && engine.passes >= 1) return { pass: true };
+  // 殘局偵測：棋盤已超過 35% 滿 + 最佳分數 < 3 → 主動 pass
+  const stoneRatio = engine.board.filter(v => v).length / (engine.size * engine.size);
+  if (pick.score < 3 && stoneRatio > 0.35) return { pass: true };
+  if (pick.score < -10) return { pass: true };
   return { x: pick.x, y: pick.y };
 }
 
@@ -981,9 +983,65 @@ class BoardRenderer {
     this.opts = Object.assign({
       onClick: null, showCoord: false, cute: false, highlight: [], lastMoveMark: true
     }, options);
+    this.animations = [];
+    this._raf = null;
+    this.hoverLibs = null;
+    this.hoverGroup = null;
     this.setSize();
     canvas.addEventListener('click', e => this.handleClick(e));
+    canvas.addEventListener('mousemove', e => this.handleHover(e));
+    canvas.addEventListener('mouseleave', () => {
+      if (this.hoverLibs || this.hoverGroup) { this.hoverLibs = null; this.hoverGroup = null; this.draw(); }
+    });
     window.addEventListener('resize', () => this.setSize());
+  }
+  animatePlace(x, y, color) {
+    this.animations.push({ x, y, color, type: 'place', start: performance.now(), dur: 220 });
+    this.runAnimation();
+  }
+  animateCapture(stones, color) {
+    const now = performance.now();
+    for (const [x, y] of stones) {
+      this.animations.push({ x, y, color, type: 'capture', start: now, dur: 380 });
+    }
+    this.runAnimation();
+  }
+  runAnimation() {
+    if (this._raf || !STATE.settings.anim) {
+      if (!STATE.settings.anim) this.animations = [];
+      this.draw();
+      return;
+    }
+    const tick = () => {
+      const now = performance.now();
+      this.animations = this.animations.filter(a => now - a.start < a.dur);
+      this.draw();
+      if (this.animations.length) {
+        this._raf = requestAnimationFrame(tick);
+      } else {
+        this._raf = null;
+      }
+    };
+    this._raf = requestAnimationFrame(tick);
+  }
+  handleHover(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const px = e.clientX - rect.left, py = e.clientY - rect.top;
+    const x = Math.round((px - this.pad) / this.grid);
+    const y = Math.round((py - this.pad) / this.grid);
+    if (!this.engine.inBounds(x, y) || !this.engine.board[this.engine.idx(x, y)]) {
+      if (this.hoverLibs) { this.hoverLibs = null; this.hoverGroup = null; this.draw(); }
+      return;
+    }
+    const g = this.engine.getGroup(x, y);
+    const libs = [...g.libSet].sort((a,b)=>a-b);
+    const libsKey = libs.join(',');
+    if (libsKey !== this._lastLibsKey) {
+      this._lastLibsKey = libsKey;
+      this.hoverLibs = libs;
+      this.hoverGroup = g.stones.map(([sx, sy]) => this.engine.idx(sx, sy));
+      this.draw();
+    }
   }
   setSize() {
     const w = Math.min(this.canvas.parentElement.offsetWidth - 32, 560);
@@ -1050,14 +1108,70 @@ class BoardRenderer {
       ctx.rect(pad + hx * grid - grid*0.4, pad + hy * grid - grid*0.4, grid*0.8, grid*0.8);
       ctx.stroke();
     }
-    // 棋子
+    // hover 氣的視覺化（在棋子之前畫，讓棋子蓋過）
     const r = grid * 0.46;
+    if (this.hoverLibs && this.hoverLibs.length) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(80, 200, 100, 0.55)';
+      ctx.strokeStyle = '#2e7d32';
+      ctx.lineWidth = 1.5;
+      for (const ix of this.hoverLibs) {
+        const lx = ix % N, ly = Math.floor(ix / N);
+        ctx.beginPath();
+        ctx.arc(pad + lx * grid, pad + ly * grid, grid * 0.17, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+      }
+      // 氣數浮標
+      if (this.hoverGroup && this.hoverGroup.length) {
+        const firstIdx = this.hoverGroup[0];
+        const fx = firstIdx % N, fy = Math.floor(firstIdx / N);
+        const textY = fy === 0 ? pad + fy * grid + grid * 0.6 : pad + fy * grid - grid * 0.55;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(pad + fx * grid - grid * 0.45, textY - grid * 0.18, grid * 0.9, grid * 0.36);
+        ctx.fillStyle = '#2e7d32';
+        ctx.font = `bold ${Math.max(11, grid * 0.32)}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(`氣 = ${this.hoverLibs.length}`, pad + fx * grid, textY);
+      }
+      ctx.restore();
+    }
+    // 棋子（含落子/提子動畫）
+    const now = performance.now();
     for (let y = 0; y < N; y++) {
       for (let x = 0; x < N; x++) {
         const v = engine.board[engine.idx(x, y)];
-        if (!v) continue;
+        const cap = this.animations.find(a => a.x === x && a.y === y && a.type === 'capture');
+        const place = this.animations.find(a => a.x === x && a.y === y && a.type === 'place');
         const cx = pad + x * grid, cy = pad + y * grid;
-        this.drawStone(cx, cy, r, v);
+        if (cap) {
+          const t = Math.min(1, (now - cap.start) / cap.dur);
+          const scale = 1 - t * 0.65;
+          ctx.save();
+          ctx.globalAlpha = 1 - t;
+          this.drawStone(cx, cy, r * scale, cap.color);
+          ctx.restore();
+          // 提子閃光
+          if (t < 0.5) {
+            ctx.save();
+            ctx.globalAlpha = (1 - t * 2) * 0.6;
+            ctx.fillStyle = '#fff59d';
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * (1 + t * 1.5), 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+          }
+          continue;
+        }
+        if (!v) continue;
+        if (place) {
+          const t = Math.min(1, (now - place.start) / place.dur);
+          const e = 1 - Math.pow(1 - t, 3);
+          const scale = 0.35 + 0.65 * e;
+          this.drawStone(cx, cy, r * scale, v);
+        } else {
+          this.drawStone(cx, cy, r, v);
+        }
       }
     }
     // 最後一手紅點
@@ -1436,15 +1550,25 @@ const CHAPTERS = [
 <div class="tip">
 💡 <b>什麼算「圍住」？</b>一片空地<u>只</u>被一種顏色包圍，這片就是那邊的。如果被兩種顏色都接觸，就是「中立空地」，沒人拿到。
 </div>
-<p>右邊棋盤：黑棋圍了左下角（5 點），白棋圍了右上角（5 點）。算算看誰贏？</p>
-<p><b>答案：</b>黑 5+棋子 4 = 9，白 5+棋子 4+貼目 6.5 = 15.5 → <b>白贏 6.5 目</b>！</p>
-<p>所以黑棋需要圍得比白多 6.5 目以上才贏。難度比較高，但黑先下也有先手優勢！</p>`,
-        boardSize: 7, mode: 'demo',
+<p>右邊棋盤示範終局：</p>
+<ul>
+<li><b>黑棋</b>用 6 顆棋子在左下角圍出 6 個空點 → 地盤 6 目</li>
+<li><b>白棋</b>用 5 顆棋子在右上角圍出 4 個空點 → 地盤 4 目</li>
+</ul>
+<div class="key-point">
+<b>算分（使用數子法簡化版）：</b><br>
+黑棋總分：地 6 + 棋子 6 = <b>12</b><br>
+白棋總分：地 4 + 棋子 5 + 貼目 6.5 = <b>15.5</b><br>
+→ <b>白贏 3.5 目</b> 🎉
+</div>
+<p>所以黑棋需要圍得比白多 6.5 目以上才贏。難度比較高，但黑先下也有先手優勢！</p>
+<p>💡 把滑鼠移到棋子上面試試，會看到那群棋的「氣」用綠點標出。</p>`,
+        boardSize: 9, mode: 'demo',
         setup: [
-          [0,4,1],[1,4,1],[2,4,1],[3,4,1],[4,3,1],[5,2,1],[6,1,1],
-          [0,3,2],[1,2,2],[2,1,2],[3,0,2],[4,0,2],[5,0,2],[6,0,2]
+          [0,5,1],[1,5,1],[2,5,1],[2,6,1],[2,7,1],[2,8,1],
+          [6,0,2],[7,0,2],[8,0,2],[6,1,2],[6,2,2]
         ],
-        hint: '看出黑白各自圍的地盤了嗎？', xp: 30
+        hint: '黑圍左下角空間 6 目；白圍右上角空間 4 目', xp: 30
       }
     ]
   },
@@ -2215,12 +2339,16 @@ function openLesson(lid) {
 
 let lessonFreeCount = 0;
 function handleLessonFreeClick(x, y) {
-  const res = lessonEngine.tryMove(x, y, lessonEngine.turn);
+  const myColor = lessonEngine.turn;
+  const res = lessonEngine.tryMove(x, y, myColor);
   if (res.ok) {
     playSound('place');
-    if (res.captured.length) playSound('capture');
+    lessonRenderer.animatePlace(x, y, myColor);
+    if (res.captured.length) {
+      playSound('capture');
+      lessonRenderer.animateCapture(res.captured, myColor === 1 ? 2 : 1);
+    }
     lessonFreeCount++;
-    lessonRenderer.draw();
     if (currentLesson.target === 'place_5_stones' && lessonFreeCount >= 5 && !STATE.lessonsDone[currentLesson.id]) {
       completeLesson();
     }
@@ -2233,8 +2361,11 @@ function handleLessonProblemClick(x, y) {
   const res = lessonEngine.tryMove(x, y, 1);
   if (res.ok) {
     playSound('place');
-    if (res.captured.length) playSound('capture');
-    lessonRenderer.draw();
+    lessonRenderer.animatePlace(x, y, 1);
+    if (res.captured.length) {
+      playSound('capture');
+      lessonRenderer.animateCapture(res.captured, 2);
+    }
     const r = document.getElementById('problemResult');
     if (isSol) {
       r.className = 'problem-result success';
@@ -2337,8 +2468,11 @@ function handleProblemClick(x, y) {
   const res = problemEngine.tryMove(x, y, 1);
   if (res.ok) {
     playSound('place');
-    if (res.captured.length) playSound('capture');
-    problemRenderer.draw();
+    problemRenderer.animatePlace(x, y, 1);
+    if (res.captured.length) {
+      playSound('capture');
+      problemRenderer.animateCapture(res.captured, 2);
+    }
     const r = document.getElementById('problemPlayResult');
     if (isSol) {
       r.className = 'problem-result success';
@@ -2372,12 +2506,24 @@ function problemShowSolution() {
 /* ===================================================================
    對弈
    =================================================================== */
+const AI_CHARS = {
+  0: { name: '🐢 烏龜爺爺', icon: '🐢', taunt: '慢慢來，爺爺陪你下～', winMsg: '哎呀～你太厲害了！' },
+  1: { name: '🐵 小猴子',   icon: '🐵', taunt: '猴急猴急的，看我亂下！', winMsg: '吼吼～這次給你贏！' },
+  2: { name: '🦊 狐狸師父', icon: '🦊', taunt: '狐狸不會手下留情喔。',   winMsg: '不錯不錯，有兩下子！' },
+  3: { name: '🐉 龍王',     icon: '🐉', taunt: '挑戰我？勇氣可嘉！',     winMsg: '...真的被你贏了？！' }
+};
+function getAiCharacter() {
+  const lv = parseInt(document.getElementById('aiLevel').value);
+  return AI_CHARS[lv] || AI_CHARS[1];
+}
+
 let playEngine = null, playRenderer = null, gameStarted = false;
 function startNewGame() {
   const size = parseInt(document.getElementById('playSize').value);
   playEngine = new GoEngine(size);
   gameStarted = true;
-  document.getElementById('playStatus').textContent = '輪到你：黑棋';
+  const ai = getAiCharacter();
+  document.getElementById('playStatus').textContent = `${ai.name}：「${ai.taunt}」｜輪到你：黑棋`;
   document.getElementById('capB').textContent = '0';
   document.getElementById('capW').textContent = '0';
   playRenderer = new BoardRenderer(document.getElementById('playBoard'), playEngine, {
@@ -2390,11 +2536,15 @@ function handlePlayClick(x, y) {
   const res = playEngine.tryMove(x, y, 1);
   if (res.ok) {
     playSound('place');
-    if (res.captured.length) { playSound('capture'); }
+    playRenderer.animatePlace(x, y, 1);
+    if (res.captured.length) {
+      playSound('capture');
+      playRenderer.animateCapture(res.captured, 2);
+    }
     document.getElementById('capB').textContent = playEngine.captures[1];
-    playRenderer.draw();
-    document.getElementById('playStatus').textContent = '電腦思考中...';
-    setTimeout(aiTurn, 400);
+    const ai = getAiCharacter();
+    document.getElementById('playStatus').textContent = ai.name + ' 思考中...';
+    setTimeout(aiTurn, 500);
   } else {
     document.getElementById('playStatus').textContent = '不能下這裡：' + res.reason;
   }
@@ -2402,21 +2552,25 @@ function handlePlayClick(x, y) {
 function aiTurn() {
   if (!gameStarted || playEngine.turn !== 2) return;
   const level = parseInt(document.getElementById('aiLevel').value);
+  const ai = getAiCharacter();
   const move = aiPickMove(playEngine, 2, level);
   if (move.pass) {
     playEngine.pass();
-    document.getElementById('playStatus').textContent = '電腦虛手（PASS）。你也虛手就結束！';
+    document.getElementById('playStatus').textContent = ai.name + ' 虛手（PASS）！你也虛手即可結束算分';
+    playRenderer.draw();
   } else {
     const res = playEngine.tryMove(move.x, move.y, 2);
     if (res.ok) {
       playSound('place');
-      if (res.captured.length) playSound('capture');
+      playRenderer.animatePlace(move.x, move.y, 2);
+      if (res.captured.length) {
+        playSound('capture');
+        playRenderer.animateCapture(res.captured, 1);
+      }
       document.getElementById('capW').textContent = playEngine.captures[2];
       document.getElementById('playStatus').textContent = '輪到你：黑棋';
     }
   }
-  playRenderer.draw();
-  // 雙方都 pass 結束
   if (playEngine.passes >= 2) endGame();
 }
 function playerPass() {
@@ -2447,25 +2601,26 @@ function endGame() {
   const s = playEngine.score();
   const winner = s.winner;
   const diff = Math.abs(s.diff).toFixed(1);
+  const level = parseInt(document.getElementById('aiLevel').value);
+  const ai = getAiCharacter();
   let msg;
   if (winner === 'black') {
-    msg = `🎉 恭喜！你贏了！\n黑勝 ${diff} 目\n（黑 ${s.black.toFixed(1)} vs 白 ${s.white.toFixed(1)}）`;
+    msg = `🎉 你擊敗了 ${ai.name}！\n${ai.winMsg}\n黑勝 ${diff} 目\n（黑 ${s.black.toFixed(1)} vs 白 ${s.white.toFixed(1)}）`;
     playSound('win');
-    const level = parseInt(document.getElementById('aiLevel').value);
     STATE.aiWins[level] = (STATE.aiWins[level] || 0) + 1;
     if (level >= 0) unlockBadge('win_ai_easy');
     if (level >= 2) unlockBadge('win_ai_mid');
     if (level >= 3) unlockBadge('win_ai_hard');
     gainXP(100);
   } else if (winner === 'white') {
-    msg = `😢 你輸了 ${diff} 目，再接再厲！\n（黑 ${s.black.toFixed(1)} vs 白 ${s.white.toFixed(1)}）`;
+    msg = `😢 ${ai.name} 贏了 ${diff} 目\n別灰心，再戰一局！\n（黑 ${s.black.toFixed(1)} vs 白 ${s.white.toFixed(1)}）`;
     playSound('lose');
     gainXP(20);
   } else {
-    msg = `平局！\n（黑 ${s.black.toFixed(1)} vs 白 ${s.white.toFixed(1)}）`;
+    msg = `🤝 平局！與 ${ai.name} 不分高下\n（黑 ${s.black.toFixed(1)} vs 白 ${s.white.toFixed(1)}）`;
     gainXP(30);
   }
-  document.getElementById('playStatus').textContent = msg.replace(/\n/g, ' ');
+  document.getElementById('playStatus').textContent = msg.replace(/\n/g, ' ｜ ');
   showFloater(msg);
   save();
 }
@@ -2480,15 +2635,19 @@ function initSandbox() {
   sandboxRenderer = new BoardRenderer(document.getElementById('sandboxBoard'), sandboxEngine, {
     showCoord: STATE.settings.coord, cute: STATE.settings.cute,
     onClick: (x, y) => {
-      const res = sandboxEngine.tryMove(x, y, sandboxColor);
+      const myColor = sandboxColor;
+      const res = sandboxEngine.tryMove(x, y, myColor);
       if (res.ok) {
         playSound('place');
-        if (res.captured.length) playSound('capture');
+        sandboxRenderer.animatePlace(x, y, myColor);
+        if (res.captured.length) {
+          playSound('capture');
+          sandboxRenderer.animateCapture(res.captured, myColor === 1 ? 2 : 1);
+        }
         if (sandboxAlt) {
           sandboxColor = sandboxColor === 1 ? 2 : 1;
           document.getElementById('sandboxColor').textContent = sandboxColor === 1 ? '⚫ 現在放黑棋' : '⚪ 現在放白棋';
         }
-        sandboxRenderer.draw();
       } else {
         document.getElementById('sandboxStatus').textContent = res.reason;
       }
