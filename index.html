@@ -303,6 +303,82 @@ canvas.go-board {
   font-size: 14px;
   font-weight: 700;
 }
+
+/* ============ 提示卡片 ============ */
+.hint-box {
+  margin-top: 12px;
+  background: linear-gradient(135deg, #fff8d6, #ffe9a8);
+  border: 3px solid #ffb300;
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(255, 180, 0, 0.25);
+  animation: hintIn .4s cubic-bezier(.16,1,.3,1);
+}
+@keyframes hintIn {
+  from { opacity: 0; transform: translateY(-8px) scale(.96); }
+  to { opacity: 1; transform: none; }
+}
+.hint-fox {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #ffb300, #ff8a3d);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+.hint-content { flex: 1; padding-right: 24px; }
+.hint-title {
+  font-weight: 900;
+  font-size: 16px;
+  color: #6b3a00;
+  margin-bottom: 8px;
+}
+.hint-coord {
+  background: #ffb300;
+  color: white;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 15px;
+  margin: 0 2px;
+}
+.hint-content ul {
+  margin: 0 0 8px 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #4a3000;
+}
+.hint-content li { margin-bottom: 6px; }
+.hint-action {
+  font-size: 12px;
+  color: #8a6500;
+  font-style: italic;
+  background: rgba(255,255,255,0.5);
+  padding: 6px 10px;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+.hint-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.1);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 14px;
+}
+.hint-close:hover { background: rgba(0,0,0,0.2); }
 .move-info .black-info { color: #222; }
 .move-info .white-info { color: var(--text-soft); }
 
@@ -636,17 +712,43 @@ footer.bottom {
           <option value="19">19 路（高手）</option>
         </select>
         <select id="aiLevel">
-          <option value="0">🐢 烏龜爺爺（會放水）</option>
-          <option value="1" selected>🐵 小猴子（初學者剋星）</option>
-          <option value="2">🦊 狐狸師父（中級）</option>
-          <option value="3">🐉 龍王（最強敵手）</option>
+          <optgroup label="🐢 烏龜爺爺 (菜鳥級)">
+            <option value="1">G1 · 棋力 30K（亂下）</option>
+            <option value="2">G2 · 棋力 28K</option>
+            <option value="3">G3 · 棋力 26K</option>
+            <option value="4">G4 · 棋力 24K</option>
+            <option value="5">G5 · 棋力 22K</option>
+          </optgroup>
+          <optgroup label="🐵 小猴子 (初級)">
+            <option value="6">G6 · 棋力 20K</option>
+            <option value="7">G7 · 棋力 18K</option>
+            <option value="8" selected>G8 · 棋力 16K</option>
+            <option value="9">G9 · 棋力 14K</option>
+            <option value="10">G10 · 棋力 12K</option>
+          </optgroup>
+          <optgroup label="🦊 狐狸師父 (中級)">
+            <option value="11">G11 · 棋力 10K</option>
+            <option value="12">G12 · 棋力 9K</option>
+            <option value="13">G13 · 棋力 8K</option>
+            <option value="14">G14 · 棋力 7K</option>
+            <option value="15">G15 · 棋力 6K</option>
+          </optgroup>
+          <optgroup label="🐉 龍王 (高級)">
+            <option value="16">G16 · 棋力 5K</option>
+            <option value="17">G17 · 棋力 4K</option>
+            <option value="18">G18 · 棋力 3K</option>
+            <option value="19">G19 · 棋力 2K</option>
+            <option value="20">G20 · 棋力 1K</option>
+          </optgroup>
         </select>
         <button onclick="playerPass()">🤝 虛手 PASS</button>
         <button onclick="resignGame()">🏳️ 投降</button>
         <button onclick="undoMove()">↩️ 悔棋</button>
+        <button onclick="showHint()" style="background:linear-gradient(135deg,#ffd93d,#ffb300);border-color:#ffb300">💡 圍圍師父建議</button>
         <div class="status" id="playStatus">點「新對局」開始！</div>
       </div>
       <canvas id="playBoard" class="go-board"></canvas>
+      <div id="hintBox" class="hint-box" style="display:none"></div>
       <div class="move-info">
         <div class="black-info">⚫ 黑棋（你）提子數：<span id="capB">0</span></div>
         <div class="white-info">⚪ 白棋（電腦）提子數：<span id="capW">0</span></div>
@@ -882,94 +984,472 @@ class GoEngine {
 }
 
 /* ===================================================================
-   核心 2：簡單 AI（啟發式評分）
+   核心 2：強化 AI（強化啟發式 + 多層預判）
    =================================================================== */
-function aiPickMove(engine, color, level = 1) {
-  const size = engine.size;
+function cloneEngineLite(engine) {
+  const e = new GoEngine(engine.size);
+  e.board = engine.board.slice();
+  e.koPoint = engine.koPoint ? [...engine.koPoint] : null;
+  e.captures = { 1: engine.captures[1], 2: engine.captures[2] };
+  e.turn = engine.turn;
+  e.passes = engine.passes;
+  e.history = []; // 不複製歷史，節省記憶體
+  return e;
+}
+
+// 判斷是否為「自己的眼」（不應該下進去）
+function isOwnEye(engine, x, y, color) {
+  if (engine.board[engine.idx(x, y)]) return false;
+  for (const [nx, ny] of engine.neighbors(x, y)) {
+    if (engine.board[engine.idx(nx, ny)] !== color) return false;
+  }
+  // 對角檢查（中央要 3/4 自己，邊角要全部自己）
+  const diags = [[x-1,y-1],[x-1,y+1],[x+1,y-1],[x+1,y+1]];
+  let total = 0, mine = 0, edge = 0;
+  for (const [dx, dy] of diags) {
+    if (!engine.inBounds(dx, dy)) { edge++; continue; }
+    total++;
+    if (engine.board[engine.idx(dx, dy)] === color) mine++;
+  }
+  if (edge > 0) return mine === total; // 邊角
+  return mine >= 3; // 中央
+}
+
+// 強化啟發式評分
+function evaluateMove(engine, x, y, color, sim, captureCount) {
   const opp = color === 1 ? 2 : 1;
+  const size = engine.size;
+  const totalStones = engine.board.filter(v => v).length;
+  let score = 0;
+
+  // 1. 吃子（提子數越多越好）
+  score += captureCount * 35;
+
+  // 2. 自己這群下完之後的氣
+  const myGroup = sim.getGroup(x, y);
+  if (myGroup.liberties === 1 && myGroup.stones.length >= 2) score -= 40; // 自打吃大群
+  else if (myGroup.liberties === 1) score -= 10;
+  else if (myGroup.liberties === 2) score -= 3;
+  else score += Math.min(myGroup.liberties, 8) * 2;
+
+  // 3. 把對手打吃 / 緊氣
+  const seenOpp = new Set();
+  for (const [nx, ny] of engine.neighbors(x, y)) {
+    const k = engine.idx(nx, ny);
+    if (sim.board[k] === opp && !seenOpp.has(k)) {
+      const og = sim.getGroup(nx, ny);
+      og.stones.forEach(([sx, sy]) => seenOpp.add(sim.idx(sx, sy)));
+      if (og.liberties === 1) score += 22 + og.stones.length * 4; // 打吃
+      else if (og.liberties === 2) score += 9 + og.stones.length;
+      else if (og.liberties === 3) score += 3;
+    }
+  }
+
+  // 4. 救自己快被吃的棋
+  const seenMy = new Set();
+  for (const [nx, ny] of engine.neighbors(x, y)) {
+    const k = engine.idx(nx, ny);
+    if (engine.board[k] === color && !seenMy.has(k)) {
+      const before = engine.getGroup(nx, ny);
+      before.stones.forEach(([sx, sy]) => seenMy.add(engine.idx(sx, sy)));
+      if (before.liberties === 1) {
+        const after = sim.getGroup(nx, ny);
+        if (after.liberties >= 3) score += 25 + before.stones.length * 5;
+        else if (after.liberties === 2) score += 8;
+        else score -= 20; // 救不出來別硬救
+      } else if (before.liberties === 2) {
+        const after = sim.getGroup(nx, ny);
+        if (after.liberties >= 4) score += 6;
+      }
+    }
+  }
+
+  // 5. 不要下自己的眼
+  if (isOwnEye(engine, x, y, color)) score -= 50;
+
+  // 6. 邊角中央偏好
+  const dist = Math.min(x, y, size-1-x, size-1-y);
+  if (totalStones < size * size * 0.5) {
+    if (dist === 0) score -= 8;
+    else if (dist === 1) score -= 3;
+    else if (dist === 2 || dist === 3) score += 4;
+  }
+
+  // 7. 連接同色
+  let friends = 0;
+  for (const [nx, ny] of engine.neighbors(x, y)) {
+    if (engine.board[engine.idx(nx, ny)] === color) friends++;
+  }
+  score += friends * 2.5;
+
+  // 8. 攻擊弱棋（搜尋 2 路內敵方弱群）
+  let attackBonus = 0;
+  const checkedGroups = new Set();
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dy = -2; dy <= 2; dy++) {
+      const nx = x+dx, ny = y+dy;
+      if (!engine.inBounds(nx, ny)) continue;
+      const k = engine.idx(nx, ny);
+      if (engine.board[k] === opp && !checkedGroups.has(k)) {
+        const og = engine.getGroup(nx, ny);
+        og.stones.forEach(([sx, sy]) => checkedGroups.add(engine.idx(sx, sy)));
+        if (og.liberties === 1) attackBonus += 8;
+        else if (og.liberties === 2) attackBonus += 4;
+        else if (og.liberties === 3) attackBonus += 2;
+      }
+    }
+  }
+  score += attackBonus;
+
+  // 9. 空三角扣分（壞形）
+  // 空三角 = 三顆同色棋 L 形排列，且 L 內側為空
+  if (friends === 2) {
+    const ns = engine.neighbors(x, y).filter(([nx, ny]) => engine.board[engine.idx(nx, ny)] === color);
+    if (ns.length === 2) {
+      const [[ax, ay], [bx, by]] = ns;
+      // 兩個鄰居要垂直（dx+dy 都不為 0 且互不平行）
+      if ((ax - x) !== (bx - x) && (ay - y) !== (by - y)) {
+        // L 內角點
+        const cornerX = ax !== x ? ax : bx;
+        const cornerY = ay !== y ? ay : by;
+        if (engine.inBounds(cornerX, cornerY) && engine.board[engine.idx(cornerX, cornerY)] === 0) {
+          score -= 4; // 空三角小扣
+        }
+      }
+    }
+  }
+
+  // 10. 開局偏好（星位、小目）
+  if (totalStones < 5) {
+    const c3 = 2, c4 = 3;
+    const cands = [[c3,c3],[c3,size-1-c3],[size-1-c3,c3],[size-1-c3,size-1-c3]];
+    if (size >= 13) cands.push([c4,c4],[c4,size-1-c4],[size-1-c4,c4],[size-1-c4,size-1-c4]);
+    if (cands.some(([cx,cy])=>cx===x&&cy===y)) score += 10;
+    // 開局避免下中央
+    if (Math.abs(x - (size-1)/2) < 2 && Math.abs(y - (size-1)/2) < 2 && size > 9) score -= 5;
+  }
+
+  // 11. 中盤靠近自己厚味的擴張（兩格遠）
+  if (totalStones >= 5) {
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dy = -2; dy <= 2; dy++) {
+        if (Math.abs(dx) + Math.abs(dy) !== 2) continue;
+        const nx = x+dx, ny = y+dy;
+        if (!engine.inBounds(nx, ny)) continue;
+        if (engine.board[engine.idx(nx, ny)] === color) { score += 1; break; }
+      }
+    }
+  }
+
+  return score;
+}
+
+// 找出 top K 候選手（基本版，不含 lookahead）
+function generateCandidates(engine, color, topK = 12) {
+  const size = engine.size;
   const moves = [];
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       if (engine.board[engine.idx(x, y)]) continue;
-      // 試下
-      const test = new GoEngine(size);
-      test.board = [...engine.board];
-      test.koPoint = engine.koPoint;
-      test.captures = {...engine.captures};
-      const res = test.tryMove(x, y, color);
+      const sim = cloneEngineLite(engine);
+      const res = sim.tryMove(x, y, color);
       if (!res.ok) continue;
-      let score = 0;
-      // 1. 吃子加分
-      score += res.captured.length * 30;
-      // 2. 自己的氣多加分（不自緊氣）
-      const myGroup = test.getGroup(x, y);
-      score += Math.min(myGroup.liberties, 6) * 3;
-      // 自殺式自打吃大扣
-      if (myGroup.liberties === 1 && myGroup.stones.length >= 2) score -= 25;
-      if (myGroup.liberties === 1 && myGroup.stones.length === 1) score -= 5;
-      // 3. 把對手打吃加分
-      for (const [nx, ny] of engine.neighbors(x, y)) {
-        if (test.board[test.idx(nx, ny)] === opp) {
-          const og = test.getGroup(nx, ny);
-          if (og.liberties === 1) score += 15;
-          else if (og.liberties === 2) score += 4;
-        }
-      }
-      // 4. 救自己被打吃的子（在落子前已打吃）
-      for (const [nx, ny] of engine.neighbors(x, y)) {
-        if (engine.board[engine.idx(nx, ny)] === color) {
-          const myG = engine.getGroup(nx, ny);
-          if (myG.liberties === 1) score += 20;
-        }
-      }
-      // 5. 邊角中央位置（中盤前避免一線二線）
-      const totalStones = engine.board.filter(v => v).length;
-      if (totalStones < size * size * 0.5) {
-        const dist = Math.min(x, y, size-1-x, size-1-y);
-        if (dist === 0) score -= 6;
-        else if (dist === 1) score -= 2;
-        else if (dist === 2 || dist === 3) score += 4;
-      }
-      // 6. 連接同色
-      let friends = 0;
-      for (const [nx, ny] of engine.neighbors(x, y)) {
-        if (engine.board[engine.idx(nx, ny)] === color) friends++;
-      }
-      score += friends * 2;
-      // 7. 攻擊鄰近敵子（接近敵棋）
-      let enemies = 0;
-      for (const [nx, ny] of engine.neighbors(x, y)) {
-        if (engine.board[engine.idx(nx, ny)] === opp) enemies++;
-      }
-      score += enemies * 1.5;
-      // 8. 開局星位/三三/小目偏好
-      if (totalStones < 4) {
-        const star = Math.floor((size-1)/2);
-        const corner3 = 2, corner4 = 3;
-        const cands = [[corner3,corner3],[corner3,size-1-corner3],[size-1-corner3,corner3],[size-1-corner3,size-1-corner3]];
-        if (size >= 13) cands.push([corner4,corner4],[corner4,size-1-corner4],[size-1-corner4,corner4],[size-1-corner4,size-1-corner4]);
-        if (cands.some(([cx,cy])=>cx===x&&cy===y)) score += 8;
-      }
-      moves.push({ x, y, score });
+      const score = evaluateMove(engine, x, y, color, sim, res.captured.length);
+      moves.push({ x, y, score, sim, captured: res.captured.length });
     }
   }
-  if (!moves.length) return { pass: true };
   moves.sort((a, b) => b.score - a.score);
-  // 依等級加入隨機性
-  let pickRange;
-  if (level === 0) pickRange = Math.min(moves.length, 20);  // 超隨機放水
-  else if (level === 1) pickRange = Math.min(moves.length, 8);
-  else if (level === 2) pickRange = Math.min(moves.length, 4);
-  else pickRange = Math.min(moves.length, 2);
-  // 高分明顯領先時也常選最佳
-  const top = moves[0].score;
-  const candidates = moves.slice(0, pickRange).filter(m => m.score > top - 10);
-  const pick = candidates[Math.floor(Math.random() * candidates.length)];
-  // 殘局偵測：棋盤已超過 35% 滿 + 最佳分數 < 3 → 主動 pass
+  return moves.slice(0, topK);
+}
+
+function aiPickMove(engine, color, level = 8) {
+  const params = (typeof levelToParams === 'function') ? levelToParams(level) :
+                 { pickRange: 5, lookaheadDepth: 0, candidateK: 12, scoreCutoff: 15, blunderRate: 0, ignoreEye: false };
+  const opp = color === 1 ? 2 : 1;
+
+  // 菜鳥級的「失誤率」：有機率直接亂下（避免完全沒挑戰也沒樂趣）
+  if (params.blunderRate > 0 && Math.random() < params.blunderRate) {
+    const empties = [];
+    for (let y = 0; y < engine.size; y++) {
+      for (let x = 0; x < engine.size; x++) {
+        if (engine.board[engine.idx(x, y)]) continue;
+        if (!params.ignoreEye && isOwnEye(engine, x, y, color)) continue;
+        const sim = cloneEngineLite(engine);
+        const res = sim.tryMove(x, y, color);
+        if (res.ok) empties.push([x, y]);
+      }
+    }
+    if (empties.length) {
+      const [x, y] = empties[Math.floor(Math.random() * empties.length)];
+      return { x, y };
+    }
+  }
+
+  const moves = generateCandidates(engine, color, params.candidateK);
+  if (!moves.length) return { pass: true };
+
+  if (params.lookaheadDepth > 0) {
+    for (const m of moves) {
+      m.adjustedScore = m.score - lookaheadPenalty(m.sim, opp, color, params.lookaheadDepth, 0);
+    }
+    moves.sort((a, b) => b.adjustedScore - a.adjustedScore);
+  }
+
+  const useAdj = params.lookaheadDepth > 0;
+  const pickRange = Math.max(1, Math.min(moves.length, params.pickRange));
+  const top = useAdj ? moves[0].adjustedScore : moves[0].score;
+  const candidates = moves.slice(0, pickRange).filter(m => {
+    const s = useAdj ? m.adjustedScore : m.score;
+    return s > top - params.scoreCutoff;
+  });
+  const pick = candidates[Math.floor(Math.random() * candidates.length)] || moves[0];
+
+  // 殘局偵測
   const stoneRatio = engine.board.filter(v => v).length / (engine.size * engine.size);
-  if (pick.score < 3 && stoneRatio > 0.35) return { pass: true };
-  if (pick.score < -10) return { pass: true };
+  const pickScore = useAdj ? pick.adjustedScore : pick.score;
+  if (pickScore < 2 && stoneRatio > 0.4) return { pass: true };
+  if (pickScore < -15) return { pass: true };
   return { x: pick.x, y: pick.y };
+}
+
+// ============ 提示棋步 + 棋理解釋 ============
+function getMoveHint(engine, color) {
+  const opp = color === 1 ? 2 : 1;
+  const moves = generateCandidates(engine, color, 8);
+  if (!moves.length) {
+    return { pass: true, reasons: ['🤝 棋盤上沒空位了，可以虛手（pass）結束。'] };
+  }
+  for (const m of moves) {
+    m.adjustedScore = m.score - lookaheadPenalty(m.sim, opp, color, 1, 0);
+  }
+  moves.sort((a, b) => b.adjustedScore - a.adjustedScore);
+  const best = moves[0];
+  const stoneRatio = engine.board.filter(v => v).length / (engine.size * engine.size);
+  if (best.adjustedScore < 2 && stoneRatio > 0.45) {
+    return {
+      pass: true,
+      reasons: [
+        '🤝 <b>局面大致已收完。</b>沒有明顯能賺到的好點，可以考慮虛手結束數目。',
+        '💡 雙方都虛手 → 進入終局算分。圍棋不是一定要把棋盤下滿才結束。'
+      ]
+    };
+  }
+  return {
+    x: best.x, y: best.y,
+    reasons: explainMoveReasons(engine, best.x, best.y, color, best.sim, best.captured),
+    score: best.adjustedScore
+  };
+}
+
+function explainMoveReasons(engine, x, y, color, sim, captureCount) {
+  const opp = color === 1 ? 2 : 1;
+  const size = engine.size;
+  const totalStones = engine.board.filter(v => v).length;
+  const reasons = [];
+
+  // 1. 提子（最高優先）
+  if (captureCount > 0) {
+    reasons.push({ p: 10,
+      m: `🎯 <b>提子 ${captureCount} 顆！</b>直接吃掉對方的棋子——這是圍棋最大的便宜，既賺地又削弱對手。`
+    });
+  }
+
+  // 2. 救快死的棋
+  const seenMy = new Set();
+  for (const [nx, ny] of engine.neighbors(x, y)) {
+    const k = engine.idx(nx, ny);
+    if (engine.board[k] === color && !seenMy.has(k)) {
+      const before = engine.getGroup(nx, ny);
+      before.stones.forEach(([sx, sy]) => seenMy.add(engine.idx(sx, sy)));
+      if (before.liberties === 1) {
+        const after = sim.getGroup(nx, ny);
+        if (after.liberties >= 3) {
+          reasons.push({ p: 9,
+            m: `🆘 <b>救出快被吃的 ${before.stones.length} 顆黑棋！</b>原本只剩 1 口氣（被打吃），這手讓它變 ${after.liberties} 口氣，順利逃出。`
+          });
+        } else if (after.liberties === 2) {
+          reasons.push({ p: 7,
+            m: `🏃 <b>暫時逃出包圍。</b>${before.stones.length} 顆黑棋從 1 口氣變 2 口氣，但後續還要小心。`
+          });
+        }
+      } else if (before.liberties === 2) {
+        const after = sim.getGroup(nx, ny);
+        if (after.liberties >= 4) {
+          reasons.push({ p: 5,
+            m: `🛡️ 加強自己的棋（從 2 口氣變 ${after.liberties} 口氣），避免被對方追殺。`
+          });
+        }
+      }
+    }
+  }
+
+  // 3. 打吃對方
+  const seenOpp = new Set();
+  let hasAtari = false;
+  for (const [nx, ny] of engine.neighbors(x, y)) {
+    const k = engine.idx(nx, ny);
+    if (sim.board[k] === opp && !seenOpp.has(k)) {
+      const og = sim.getGroup(nx, ny);
+      og.stones.forEach(([sx, sy]) => seenOpp.add(sim.idx(sx, sy)));
+      if (og.liberties === 1) {
+        hasAtari = true;
+        reasons.push({ p: 8,
+          m: `⚔️ <b>打吃對方 ${og.stones.length} 顆白棋！</b>對方只剩 1 口氣，下回合必須補一手（否則被吃）——你可趁機在別處下大棋。`
+        });
+      } else if (og.liberties === 2) {
+        reasons.push({ p: 6,
+          m: `📌 緊住對方的氣（剩 2 口氣），讓對方變弱，後續可進一步追殺。`
+        });
+      }
+    }
+  }
+
+  // 4. 攻擊範圍內弱棋
+  if (!hasAtari) {
+    const checkedG = new Set();
+    let weakOpp = null;
+    for (let dx = -2; dx <= 2 && !weakOpp; dx++) {
+      for (let dy = -2; dy <= 2 && !weakOpp; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = x+dx, ny = y+dy;
+        if (!engine.inBounds(nx, ny)) continue;
+        const k = engine.idx(nx, ny);
+        if (engine.board[k] === opp && !checkedG.has(k)) {
+          const og = engine.getGroup(nx, ny);
+          og.stones.forEach(([sx, sy]) => checkedG.add(engine.idx(sx, sy)));
+          if (og.liberties <= 3) weakOpp = og;
+        }
+      }
+    }
+    if (weakOpp) {
+      reasons.push({ p: 5,
+        m: `🏹 <b>攻擊對方氣少的弱棋（剩 ${weakOpp.liberties} 口氣）。</b>「攻擊中順勢圍地」是高手最愛的手法。`
+      });
+    }
+  }
+
+  // 5. 切斷
+  let canSeparate = false;
+  for (const [nx, ny] of engine.neighbors(x, y)) {
+    if (engine.board[engine.idx(nx, ny)] === opp) {
+      // 看四鄰是否各自獨立群（簡化判斷）
+      const oppCount = engine.neighbors(x, y).filter(([ax, ay]) => engine.board[engine.idx(ax, ay)] === opp).length;
+      if (oppCount >= 2) { canSeparate = true; break; }
+    }
+  }
+  if (canSeparate && captureCount === 0) {
+    reasons.push({ p: 6,
+      m: `✂️ <b>切斷對方！</b>把對方兩團棋分開來，氣會變少，更好攻擊。`
+    });
+  }
+
+  // 6. 連接
+  let friends = 0;
+  for (const [nx, ny] of engine.neighbors(x, y)) {
+    if (engine.board[engine.idx(nx, ny)] === color) friends++;
+  }
+  if (friends >= 2 && captureCount === 0) {
+    reasons.push({ p: 4,
+      m: `🤝 把鄰近 ${friends} 顆黑棋連起來——氣共用、力量倍增，被切斷的棋會變弱。`
+    });
+  } else if (friends === 1 && captureCount === 0 && totalStones < 15) {
+    reasons.push({ p: 3,
+      m: `🔗 跟自己的棋連動，慢慢擴大陣型。`
+    });
+  }
+
+  // 7. 位置感
+  const dist = Math.min(x, y, size-1-x, size-1-y);
+  if (totalStones < 10) {
+    if (dist === 2 || dist === 3) {
+      reasons.push({ p: 5,
+        m: `💰 <b>「金角銀邊」好位置。</b>角落圍地效率最高，同樣 9 顆棋角落能圍 9 目、中央只能圍 4 目。`
+      });
+    } else if (dist >= 4 && size >= 13) {
+      reasons.push({ p: 4,
+        m: `📐 在中腹位置——配合厚味擴張，或限制對方模樣。`
+      });
+    }
+  }
+
+  // 8. 厚味延伸（飛、跳的好形）
+  let diagFriends = 0;
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dy = -2; dy <= 2; dy++) {
+      const d = Math.abs(dx) + Math.abs(dy);
+      if (d === 0 || d > 2) continue;
+      const nx = x+dx, ny = y+dy;
+      if (!engine.inBounds(nx, ny)) continue;
+      if (engine.board[engine.idx(nx, ny)] === color) diagFriends++;
+    }
+  }
+  if (diagFriends >= 2 && totalStones >= 8 && friends < 2 && captureCount === 0) {
+    reasons.push({ p: 4,
+      m: `🏗️ <b>擴大勢力範圍。</b>這是「飛」或「跳」的好形，比直接相鄰更靈活。`
+    });
+  }
+
+  // 9. 限制對方擴張
+  let nearOpp = 0;
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dy = -2; dy <= 2; dy++) {
+      const nx = x+dx, ny = y+dy;
+      if (!engine.inBounds(nx, ny)) continue;
+      if (engine.board[engine.idx(nx, ny)] === opp) nearOpp++;
+    }
+  }
+  if (nearOpp >= 3 && totalStones >= 12 && reasons.every(r => r.p < 5)) {
+    reasons.push({ p: 4,
+      m: `🛡️ <b>限制對方擴張。</b>不讓對方圍太大，比自己單純擴張同樣重要——好棋手要懂攻守平衡。`
+    });
+  }
+
+  // 10. 預設
+  if (reasons.length === 0) {
+    reasons.push({ p: 1,
+      m: `🌟 這是當前局面下整體最好的點，能平衡多方面需求（圍地、防守、機動性）。`
+    });
+  }
+
+  reasons.sort((a, b) => b.p - a.p);
+  return reasons.slice(0, 3).map(r => r.m);
+}
+
+// 計算對方對這手的最強回應分數（越高代表這手副作用越大）
+function lookaheadPenalty(simAfterMyMove, oppColor, myColor, depth, currentDepth) {
+  if (currentDepth >= depth) return 0;
+  // 對方候選（也精簡，避免爆炸）
+  const oppCandidatesK = depth === 2 && currentDepth === 0 ? 5 : 8;
+  const oppCands = [];
+  const size = simAfterMyMove.size;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (simAfterMyMove.board[simAfterMyMove.idx(x, y)]) continue;
+      const sim2 = cloneEngineLite(simAfterMyMove);
+      const res = sim2.tryMove(x, y, oppColor);
+      if (!res.ok) continue;
+      const sc = evaluateMove(simAfterMyMove, x, y, oppColor, sim2, res.captured.length);
+      oppCands.push({ x, y, score: sc, sim: sim2 });
+    }
+  }
+  if (!oppCands.length) return 0;
+  oppCands.sort((a, b) => b.score - a.score);
+  const top = oppCands.slice(0, oppCandidatesK);
+
+  // 對方最強應之後，我再考慮一手（depth 2 才遞迴）
+  let worstForMe = 0;
+  for (const oc of top) {
+    let oppNet = oc.score;
+    if (currentDepth + 1 < depth) {
+      // 我下一手能扳回多少
+      const myReply = lookaheadPenalty(oc.sim, myColor, oppColor, depth, currentDepth + 1);
+      oppNet -= myReply * 0.7;
+    }
+    if (oppNet > worstForMe) worstForMe = oppNet;
+  }
+  // 對方最強應的權重隨深度遞減
+  const weight = currentDepth === 0 ? 0.65 : 0.45;
+  return Math.max(0, worstForMe) * weight;
 }
 
 /* ===================================================================
@@ -987,6 +1467,7 @@ class BoardRenderer {
     this._raf = null;
     this.hoverLibs = null;
     this.hoverGroup = null;
+    this.hintPulse = null;
     this.setSize();
     canvas.addEventListener('click', e => this.handleClick(e));
     canvas.addEventListener('mousemove', e => this.handleHover(e));
@@ -1007,8 +1488,9 @@ class BoardRenderer {
     this.runAnimation();
   }
   runAnimation() {
-    if (this._raf || !STATE.settings.anim) {
-      if (!STATE.settings.anim) this.animations = [];
+    if (this._raf) return;
+    if (!STATE.settings.anim && !this.hintPulse) {
+      this.animations = [];
       this.draw();
       return;
     }
@@ -1016,13 +1498,21 @@ class BoardRenderer {
       const now = performance.now();
       this.animations = this.animations.filter(a => now - a.start < a.dur);
       this.draw();
-      if (this.animations.length) {
+      if (this.animations.length || this.hintPulse) {
         this._raf = requestAnimationFrame(tick);
       } else {
         this._raf = null;
       }
     };
     this._raf = requestAnimationFrame(tick);
+  }
+  showHintMark(x, y) {
+    this.hintPulse = { x, y, start: performance.now() };
+    this.runAnimation();
+  }
+  clearHintMark() {
+    this.hintPulse = null;
+    if (!this.animations.length && this._raf == null) this.draw();
   }
   handleHover(e) {
     const rect = this.canvas.getBoundingClientRect();
@@ -1184,6 +1674,33 @@ class BoardRenderer {
       ctx.arc(cx, cy, r * 0.4, 0, 2*Math.PI);
       ctx.stroke();
     }
+    // 提示金色脈動
+    if (this.hintPulse) {
+      const elapsed = (performance.now() - this.hintPulse.start) / 1000;
+      const pulse = (Math.sin(elapsed * 4) + 1) / 2;
+      const cx = pad + this.hintPulse.x * grid;
+      const cy = pad + this.hintPulse.y * grid;
+      // 外圈光暈
+      const haloR = grid * (0.55 + pulse * 0.25);
+      const gradHalo = ctx.createRadialGradient(cx, cy, grid * 0.3, cx, cy, haloR);
+      gradHalo.addColorStop(0, `rgba(255, 215, 0, ${0.55 + pulse * 0.25})`);
+      gradHalo.addColorStop(1, 'rgba(255, 215, 0, 0)');
+      ctx.fillStyle = gradHalo;
+      ctx.beginPath();
+      ctx.arc(cx, cy, haloR, 0, 2 * Math.PI);
+      ctx.fill();
+      // 金色描邊
+      ctx.strokeStyle = '#ffb300';
+      ctx.lineWidth = 3 + pulse * 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, grid * 0.42, 0, 2 * Math.PI);
+      ctx.stroke();
+      // 中央星星
+      ctx.font = `${grid * 0.5}px sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = `rgba(255, 235, 59, ${0.7 + pulse * 0.3})`;
+      ctx.fillText('✨', cx, cy);
+    }
     // 打劫禁手標記
     if (engine.koPoint) {
       const [kx, ky] = engine.koPoint;
@@ -1258,9 +1775,9 @@ const BADGES = [
   { id: 'streak3',      name: '三天堅持',   icon: '🔥', desc: '連續 3 天練習' },
   { id: 'streak7',      name: '一週鐵粉',   icon: '💎', desc: '連續 7 天練習' },
   { id: 'streak30',     name: '月度棋癡',   icon: '🌙', desc: '連續 30 天練習' },
-  { id: 'win_ai_easy',  name: '初戰告捷',   icon: '🏆', desc: '擊敗初學 AI' },
-  { id: 'win_ai_mid',   name: '小有實力',   icon: '🥈', desc: '擊敗中級 AI' },
-  { id: 'win_ai_hard',  name: '高手風範',   icon: '🥇', desc: '擊敗強 AI' },
+  { id: 'win_ai_easy',  name: '初戰告捷',   icon: '🏆', desc: '擊敗任何 G 級 AI' },
+  { id: 'win_ai_mid',   name: '小有實力',   icon: '🥈', desc: '擊敗 G11+ 狐狸師父' },
+  { id: 'win_ai_hard',  name: '高手風範',   icon: '🥇', desc: '擊敗 G16+ 龍王' },
   { id: 'p10_solved',   name: '解題達人',   icon: '🧩', desc: '解開 10 題' },
   { id: 'p30_solved',   name: '題庫征服者', icon: '🧠', desc: '解開 30 題' },
   { id: 'lucky_5',      name: '幸運兒',     icon: '🍀', desc: '抽中 5 個寶箱' },
@@ -2506,15 +3023,72 @@ function problemShowSolution() {
 /* ===================================================================
    對弈
    =================================================================== */
-const AI_CHARS = {
-  0: { name: '🐢 烏龜爺爺', icon: '🐢', taunt: '慢慢來，爺爺陪你下～', winMsg: '哎呀～你太厲害了！' },
-  1: { name: '🐵 小猴子',   icon: '🐵', taunt: '猴急猴急的，看我亂下！', winMsg: '吼吼～這次給你贏！' },
-  2: { name: '🦊 狐狸師父', icon: '🦊', taunt: '狐狸不會手下留情喔。',   winMsg: '不錯不錯，有兩下子！' },
-  3: { name: '🐉 龍王',     icon: '🐉', taunt: '挑戰我？勇氣可嘉！',     winMsg: '...真的被你贏了？！' }
-};
+const RANK_KYU = { 1:'30K',2:'28K',3:'26K',4:'24K',5:'22K',6:'20K',7:'18K',8:'16K',9:'14K',10:'12K',
+                   11:'10K',12:'9K',13:'8K',14:'7K',15:'6K',16:'5K',17:'4K',18:'3K',19:'2K',20:'1K' };
 function getAiCharacter() {
   const lv = parseInt(document.getElementById('aiLevel').value);
-  return AI_CHARS[lv] || AI_CHARS[1];
+  const kyu = RANK_KYU[lv] || '?';
+  if (lv <= 5) {
+    return {
+      level: lv, kyu, icon: '🐢',
+      name: `🐢 烏龜爺爺 G${lv}`,
+      taunt: lv <= 2 ? '咳咳～我亂下也別笑爺爺～' : '慢慢來，爺爺陪你練手感～',
+      winMsg: lv <= 2 ? '咦？我這樣也輸？' : '哎呀～你進步好快！'
+    };
+  }
+  if (lv <= 10) {
+    return {
+      level: lv, kyu, icon: '🐵',
+      name: `🐵 小猴子 G${lv}`,
+      taunt: lv <= 7 ? '猴急猴急的，看我亂衝！' : '我會吃子囉，小心點！',
+      winMsg: '吼吼～再來一盤！'
+    };
+  }
+  if (lv <= 15) {
+    return {
+      level: lv, kyu, icon: '🦊',
+      name: `🦊 狐狸師父 G${lv}`,
+      taunt: lv <= 12 ? '狐狸的腦袋可不簡單。' : '我會看一步以後，認真點。',
+      winMsg: '不錯，有兩下子！'
+    };
+  }
+  return {
+    level: lv, kyu, icon: '🐉',
+    name: `🐉 龍王 G${lv}`,
+    taunt: lv <= 17 ? '我會看兩步，膽小者退散！' : '挑戰最強形態？我會全力以赴！',
+    winMsg: lv <= 17 ? '可惡⋯被你贏了！' : '...真的被你打敗了？！佩服。'
+  };
+}
+
+// G1-G20 對應 AI 內部參數
+function levelToParams(g) {
+  const p = { pickRange: 1, lookaheadDepth: 0, candidateK: 12, scoreCutoff: 10, blunderRate: 0, ignoreEye: false };
+  if (g <= 5) {
+    // 菜鳥：高隨機 + 低等級會下自己的眼
+    p.blunderRate = (6 - g) / 5 * 0.45;     // G1: 0.45, G5: 0.09
+    p.pickRange = 22 - (g - 1) * 2;          // G1: 22, G5: 14
+    p.candidateK = 18;
+    p.scoreCutoff = 30;
+    p.ignoreEye = g <= 2;
+  } else if (g <= 10) {
+    // 初級：純啟發式 + 中隨機
+    p.pickRange = 14 - (g - 6) * 2;          // G6: 14, G10: 6
+    p.candidateK = 14;
+    p.scoreCutoff = 18;
+  } else if (g <= 15) {
+    // 中級：強化啟發式 + 1 步預判 + 小隨機
+    p.pickRange = Math.max(2, 6 - (g - 11)); // G11: 6, G15: 2
+    p.candidateK = 10;
+    p.scoreCutoff = 10;
+    p.lookaheadDepth = 1;
+  } else {
+    // 高級：強化啟發式 + 2 步預判 + 幾乎最佳
+    p.pickRange = Math.max(1, 3 - (g - 16) * 0.5); // G16: 3, G20: 1
+    p.candidateK = 8;
+    p.scoreCutoff = g >= 19 ? 3 : 6;
+    p.lookaheadDepth = g >= 18 ? 2 : 1;
+  }
+  return p;
 }
 
 let playEngine = null, playRenderer = null, gameStarted = false;
@@ -2531,8 +3105,52 @@ function startNewGame() {
     onClick: (x, y) => handlePlayClick(x, y)
   });
 }
+function showHint() {
+  if (!gameStarted) {
+    showFloater('💡 提示功能要先\n「新對局」開始');
+    return;
+  }
+  if (playEngine.turn !== 1) {
+    showFloater('💡 等對手下完\n再請我建議');
+    return;
+  }
+  const hint = getMoveHint(playEngine, 1);
+  const box = document.getElementById('hintBox');
+  if (hint.pass) {
+    box.innerHTML = `
+      <div class="hint-fox">🦊</div>
+      <div class="hint-content">
+        <div class="hint-title">圍圍師父建議：虛手結束 🤝</div>
+        <ul>${hint.reasons.map(r => `<li>${r}</li>`).join('')}</ul>
+      </div>
+      <button class="hint-close" onclick="closeHint()">✕</button>
+    `;
+    if (playRenderer) playRenderer.clearHintMark();
+  } else {
+    const letters = 'ABCDEFGHJKLMNOPQRST';
+    const coord = `${letters[hint.x]}${playEngine.size - hint.y}`;
+    box.innerHTML = `
+      <div class="hint-fox">🦊</div>
+      <div class="hint-content">
+        <div class="hint-title">圍圍師父建議下 <span class="hint-coord">${coord}</span>（金色閃光位置 ✨）</div>
+        <ul>${hint.reasons.map(r => `<li>${r}</li>`).join('')}</ul>
+        <div class="hint-action">💡 看完按 ✕ 關掉提示，再自己下這手（或選別處）</div>
+      </div>
+      <button class="hint-close" onclick="closeHint()">✕</button>
+    `;
+    if (playRenderer) playRenderer.showHintMark(hint.x, hint.y);
+  }
+  box.style.display = 'flex';
+}
+function closeHint() {
+  const box = document.getElementById('hintBox');
+  if (box) box.style.display = 'none';
+  if (playRenderer) playRenderer.clearHintMark();
+}
+
 function handlePlayClick(x, y) {
   if (!gameStarted || playEngine.turn !== 1) return;
+  closeHint();
   const res = playEngine.tryMove(x, y, 1);
   if (res.ok) {
     playSound('place');
@@ -2605,13 +3223,13 @@ function endGame() {
   const ai = getAiCharacter();
   let msg;
   if (winner === 'black') {
-    msg = `🎉 你擊敗了 ${ai.name}！\n${ai.winMsg}\n黑勝 ${diff} 目\n（黑 ${s.black.toFixed(1)} vs 白 ${s.white.toFixed(1)}）`;
+    msg = `🎉 你擊敗了 ${ai.name}（${ai.kyu}）！\n${ai.winMsg}\n黑勝 ${diff} 目\n（黑 ${s.black.toFixed(1)} vs 白 ${s.white.toFixed(1)}）`;
     playSound('win');
     STATE.aiWins[level] = (STATE.aiWins[level] || 0) + 1;
-    if (level >= 0) unlockBadge('win_ai_easy');
-    if (level >= 2) unlockBadge('win_ai_mid');
-    if (level >= 3) unlockBadge('win_ai_hard');
-    gainXP(100);
+    if (level >= 1) unlockBadge('win_ai_easy');
+    if (level >= 11) unlockBadge('win_ai_mid');
+    if (level >= 16) unlockBadge('win_ai_hard');
+    gainXP(50 + level * 5); // 越強的 AI 給越多 XP（G1:55, G20:150）
   } else if (winner === 'white') {
     msg = `😢 ${ai.name} 贏了 ${diff} 目\n別灰心，再戰一局！\n（黑 ${s.black.toFixed(1)} vs 白 ${s.white.toFixed(1)}）`;
     playSound('lose');
